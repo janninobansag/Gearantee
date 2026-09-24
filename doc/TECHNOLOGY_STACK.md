@@ -15,6 +15,7 @@ This stack applies to the **entire Campus Equipment Borrowing & Reservation Syst
 | User interface | ASP.NET Core Razor Pages | Provides responsive browser pages, forms, tables, dashboards, and role-specific screens. Razor Pages is the selected UI approach for the first version. |
 | Styling | Bootstrap 5 + custom CSS | Creates a responsive, consistent interface for desktop and mobile users without requiring a separate frontend application. |
 | Client-side interaction | Vanilla JavaScript | Supports confirmation dialogs, table filtering, calendar interactions, and small asynchronous UI updates where needed. |
+| Equipment images | Application file storage + PostgreSQL image path/URL | Stores uploaded catalog images outside the database while PostgreSQL stores the relative path or URL used by the catalog. |
 | Calendar | FullCalendar JavaScript library | Displays daily/weekly equipment availability using reservation and loan data provided by ASP.NET Core. |
 | Reporting | EF Core queries + Razor Pages | Produces filterable borrowing-history, overdue, availability, and inventory reports. PDF/Excel export can be added later if required. |
 | Validation | ASP.NET Core model validation + FluentValidation (optional) | Validates forms and business rules on the server, including required fields and valid date ranges. |
