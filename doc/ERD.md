@@ -1,6 +1,15 @@
 # Entity Relationship Diagram (ERD)
 
-This ERD supports the initial Campus Equipment Borrowing & Reservation System scope. It models access control, equipment inventory, reservations, releases, and returns.
+This is the simplified visual reference for the Version 1 Campus Equipment Borrowing & Reservation System. The authoritative field definitions and SQL Server constraints are in `Campus_Equipment_Borrowing_ERD_Data_Dictionary.md`.
+
+## Design Decisions
+
+- ASP.NET Core Identity manages users, password hashes, roles, sign-in, and reset tokens.
+- `ApplicationUser` extends Identity with application-specific account fields.
+- `BorrowerProfile` stores school identity, department, contact, and borrowing eligibility.
+- Each reservation contains exactly one equipment item.
+- A borrower requests multiple. items by creating multiple reservations.
+- SQL Server is the database engine; SSMS is an optional administration tool.
 
 ```mermaid
 erDiagram
