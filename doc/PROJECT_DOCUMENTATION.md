@@ -42,7 +42,8 @@ The initial release is intentionally focused on the core borrowing workflow and 
 
 #### Equipment Item Management
 - Administrators can register and maintain each borrowable item.
-- Each record should include: item code, category, name/model, serial number, condition, current status, and storage/assigned location.
+- Each record should include: item code, category, name/model, serial number, catalog image, condition, current status, and storage/assigned location.
+- The borrower catalog displays the item's catalog image when one has been uploaded; the image is optional and a default placeholder is shown when no image exists.
 - An item can be marked unavailable when under maintenance, lost, retired, or otherwise not borrowable.
 
 #### Borrower Profile Management
@@ -125,7 +126,7 @@ The initial release is intentionally focused on the core borrowing workflow and 
 | Borrower Profile | Student/faculty eligibility record | Borrower ID, user ID, school ID, department, contact details, eligibility |
 | Role | Permission group | Role ID, name, permissions |
 | Equipment Category | Equipment grouping | Category ID, name, active status |
-| Equipment Item | Individual trackable item | Item ID/code, category, name/model, serial number, condition, status, location |
+| Equipment Item | Individual trackable item | Item ID/code, category, name/model, serial number, catalog image URL/path, condition, status, location |
 | Reservation | Requested schedule for an item | Reservation ID, borrower, item, purpose, requested release/return dates, status |
 | Release Record | Confirmation of handover | Release ID, reservation, custodian, actual release time, notes |
 | Return Record | Confirmation of return and inspection | Return ID, release/reservation, custodian, actual return time, condition, notes |

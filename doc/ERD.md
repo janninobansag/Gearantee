@@ -63,6 +63,7 @@ erDiagram
         string current_condition
         string current_status
         string storage_location
+        string image_url
         boolean is_active
         datetime created_at
         datetime updated_at
