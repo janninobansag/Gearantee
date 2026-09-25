@@ -6,22 +6,129 @@ This plan covers the complete first version of the system using ASP.NET Core MVC
 
 **Tracking:** change `[ ]` to `[x]` as each task is completed.
 
+## How to update this file
+
+Update this file **in the same PR** that finishes or starts a feature.
+
+1. Find the feature's row in the WBS Feature Tracker (match the WBS number).
+2. Set **Status** to one of: `Not Started` · `In Progress` · `In Review` · `Done` · `Blocked`.
+   - `In Progress` → fill **Actual Start**.
+   - `In Review` → add the PR link (for example, `#12`).
+   - `Done` → fill **Actual End** (the merge date) and keep the PR link.
+3. Tick the related `[ ]` → `[x]` item(s) in the matching Milestone section only when *all* WBS rows for that item are `Done`.
+4. Recalculate the Progress summary counts.
+5. Add one line to the Change log.
+6. Mirror Actual Start / Actual End in the WBS Google Sheet.
+
+Dates use `M/D/YYYY` (the same format as the WBS sheet). Never change Baseline dates here — change them in the WBS sheet first, then copy them here.
+
+## Progress summary
+
+### By status
+
+The tracker contains 44 leaf features. Group headings such as 2.00 and 4.00 are not counted.
+
+| Status | Count |
+| --- | --- |
+| Done | 2 |
+| In Review | 0 |
+| In Progress | 0 |
+| Not Started | 42 |
+| Blocked | 0 |
+
+### By member
+
+Shared rows count for each assigned member.
+
+| Member | Assigned | Done |
+| --- | --- | --- |
+| Member 1 — Gesim | 6 (1.00, 20–23, 56) | 1 |
+| Member 2 — Bansag | 13 (1.00, 9–12, 25–28, 52–55) | 1 |
+| Member 3 — Laroco | 12 (1.00, 3, 5–7, 14–18, 49–50) | 2 |
+| Member 4 — Cancencia | 7 (30–32, 39–42) | 0 |
+| Member 5 — Cataraja | 9 (34–37, 44–47, 56) | 0 |
+
+## WBS Feature Tracker
+
+| WBS | Feature | Owner | Baseline Start | Baseline End | Days | Actual Start | Actual End | Status | PR | Milestone |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1.00 | Project Architecture & Setup | Gesim, Bansag, Laroco | 9/19/2026 | 9/23/2026 | 4 | 9/20/2026 | 9/24/2026 | Done | — | M1 |
+| **2.00** | **Authentication: User Login** | | | | | | | | | |
+| 3.00 | User Login Page | Laroco | 9/24/2026 | 9/25/2026 | 1 | 9/25/2026 | 9/25/2026 | Done | #6 | M2 |
+| **4.00** | **Authentication: Role-Based Dashboard** | | | | | | | | | |
+| 5.00 | View Borrower's Dashboard Page | Laroco | 9/25/2026 | 9/28/2026 | 3 | | | Not Started | | M2 |
+| 6.00 | View Custodian's Dashboard Page | Laroco | 9/25/2026 | 9/28/2026 | 3 | | | Not Started | | M2 |
+| 7.00 | View Administrator's Dashboard Page | Laroco | 9/25/2026 | 9/28/2026 | 3 | | | Not Started | | M2 |
+| **8.00** | **Authentication: Password Reset Request** | | | | | | | | | |
+| 9.00 | Request Password Reset Page | Bansag | 9/25/2026 | 9/28/2026 | 3 | | | Not Started | | M2 |
+| 10.00 | Receive OTP in Email | Bansag | 9/25/2026 | 9/28/2026 | 3 | | | Not Started | | M2 |
+| 11.00 | OTP Verification Page | Bansag | 9/25/2026 | 9/28/2026 | 3 | | | Not Started | | M2 |
+| 12.00 | Set New Password | Bansag | 9/25/2026 | 9/28/2026 | 3 | | | Not Started | | M2 |
+| **13.00** | **Administration: User and Role Management** | | | | | | | | | |
+| 14.00 | View User Accounts Page | Laroco | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| 15.00 | Create Accounts | Laroco | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| 16.00 | Assign & Update Roles | Laroco | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| 17.00 | Configure Role Access Permissions | Laroco | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| 18.00 | Deactivate Users | Laroco | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| **19.00** | **Master Data: Equipment Category Management** | | | | | | | | | |
+| 20.00 | Create Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| 21.00 | Read Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| 22.00 | Update Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| 23.00 | Delete/Deactivate Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| **24.00** | **Master Data: Equipment Item Management** | | | | | | | | | |
+| 25.00 | View Equipment Items | Bansag | 10/3/2026 | 10/6/2026 | 3 | | | Not Started | | M3 |
+| 26.00 | Register Equipment Item | Bansag | 10/3/2026 | 10/6/2026 | 3 | | | Not Started | | M3 |
+| 27.00 | Update Equipment Item | Bansag | 10/3/2026 | 10/6/2026 | 3 | | | Not Started | | M3 |
+| 28.00 | Delete Equipment Items | Bansag | 10/3/2026 | 10/6/2026 | 3 | | | Not Started | | M3 |
+| **29.00** | **Master Data: Borrower Profile Management** | | | | | | | | | |
+| 30.00 | View Borrower's Records | Cancencia | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| 31.00 | Update Borrower's Records | Cancencia | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| 32.00 | Update Eligibility Status | Cancencia | 9/29/2026 | 10/1/2026 | 2 | | | Not Started | | M3 |
+| **33.00** | **Transactions: Equipment Reservation** | | | | | | | | | |
+| 34.00 | Search & View Available Items Page | Cataraja | 10/6/2026 | 10/7/2026 | 1 | | | Not Started | | M4 |
+| 35.00 | Create and Submit Reservation Request | Cataraja | 10/6/2026 | 10/8/2026 | 2 | | | Not Started | | M4 |
+| 36.00 | View Reservation Status | Cataraja | 10/6/2026 | 10/8/2026 | 2 | | | Not Started | | M4 |
+| 37.00 | Cancel Reservation | Cataraja | 10/6/2026 | 10/8/2026 | 2 | | | Not Started | | M4 |
+| **38.00** | **Transactions: Approval and Release** | | | | | | | | | |
+| 39.00 | View Reservation Requests | Cancencia | 10/9/2026 | 10/11/2026 | 2 | | | Not Started | | M5 |
+| 40.00 | Approve Reservation Requests | Cancencia | 10/9/2026 | 10/10/2026 | 1 | | | Not Started | | M5 |
+| 41.00 | Reject Reservation Requests | Cancencia | 10/9/2026 | 10/10/2026 | 1 | | | Not Started | | M5 |
+| 42.00 | Record Equipment Release | Cancencia | 10/9/2026 | 10/11/2026 | 2 | | | Not Started | | M5 |
+| **43.00** | **Transactions: Return and Condition Check** | | | | | | | | | |
+| 44.00 | Record Returned Item | Cataraja | 10/11/2026 | 10/13/2026 | 2 | | | Not Started | | M5 |
+| 45.00 | Update Item Condition Status | Cataraja | 10/11/2026 | 10/13/2026 | 2 | | | Not Started | | M5 |
+| 46.00 | Update Item Status | Cataraja | 10/11/2026 | 10/13/2026 | 2 | | | Not Started | | M5 |
+| 47.00 | Identify Late Returns | Cataraja | 10/11/2026 | 10/13/2026 | 2 | | | Not Started | | M5 |
+| **48.00** | **Reports: Availability Calendar** | | | | | | | | | |
+| 49.00 | View Availability Calendar Page | Laroco | 10/9/2026 | 10/13/2026 | 4 | | | Not Started | | M6 |
+| 50.00 | Filter Calendar View | Laroco | 10/10/2026 | 10/12/2026 | 2 | | | Not Started | | M6 |
+| **51.00** | **Reports: Borrowing History Report** | | | | | | | | | |
+| 52.00 | View Borrowing History Page | Bansag | 10/14/2026 | 10/16/2026 | 2 | | | Not Started | | M6 |
+| 53.00 | Search Borrowing History | Bansag | 10/15/2026 | 10/16/2026 | 1 | | | Not Started | | M6 |
+| 54.00 | Filter Borrowing History | Bansag | 10/16/2026 | 10/17/2026 | 1 | | | Not Started | | M6 |
+| 55.00 | Generate Borrowing Report | Bansag | 10/18/2026 | 10/21/2026 | 3 | | | Not Started | | M6 |
+| 56.00 | Testing and Debugging | Gesim, Cataraja | 10/22/2026 | 10/26/2026 | 4 | | | Not Started | | M7 |
+
+> Feature names correct spelling in the WBS sheet, including “Receive,” “Equipment,” and “items.” Correct the sheet as well, or use its spelling here if the team decides an exact match is required.
+
 ## Milestone Overview
 
-| Milestone | Focus | Main deliverable |
-| --- | --- | --- |
-| 1 | Project foundation | Running ASP.NET Core MVC project connected to SQL Server |
-| 2 | Authentication and access | Secure sign-in, password recovery, and role-based dashboards |
-| 3 | Master data | Managed users, borrower profiles, categories, and equipment items |
-| 4 | Reservations | Searchable catalog, availability checking, and reservation requests |
-| 5 | Custodian workflow | Approval, rejection, release, and return/condition processing |
-| 6 | Calendar and reporting | Availability calendar and filterable operational reports |
-| 7 | Quality assurance | Tested, secure, responsive, and documented system |
-| 8 | Deployment and handover | Production-ready deployment and administrator handover |
+| Milestone | Focus | Main deliverable | WBS items |
+| --- | --- | --- | --- |
+| 1 | Project foundation | Running ASP.NET Core MVC project connected to SQL Server | 1.00 |
+| 2 | Authentication and access | Secure sign-in, password recovery, and role-based dashboards | 3.00, 5.00–7.00, 9.00–12.00 |
+| 3 | Master data | Managed users, borrower profiles, categories, and equipment items | 14.00–18.00, 20.00–23.00, 25.00–28.00, 30.00–32.00 |
+| 4 | Reservations | Searchable catalog, availability checking, and reservation requests | 34.00–37.00 |
+| 5 | Custodian workflow | Approval, rejection, release, and return/condition processing | 39.00–42.00, 44.00–47.00 |
+| 6 | Calendar and reporting | Availability calendar and filterable operational reports | 49.00–50.00, 52.00–55.00 |
+| 7 | Quality assurance | Tested, secure, responsive, and documented system | 56.00 |
+| 8 | Deployment and handover | Production-ready deployment and administrator handover | No WBS rows yet — add when scheduled |
 
 ---
 
 ## Milestone 1 — Project Foundation
+
+**WBS:** 1.00
 
 **Goal:** Create the application structure and database connection.
 
@@ -35,6 +142,7 @@ This plan covers the complete first version of the system using ASP.NET Core MVC
 - [ ] Configure Tailwind CSS, its Razor content scanning, development watch command, and minified production build.
 - [ ] Establish the shared layout, navigation, Tailwind styling, error pages, and basic logging.
 - [ ] Create development/production configuration separation.
+- [x] Add GitHub Actions CI (build, EF migration check, vulnerable-package check, and CodeQL) and protect `main` (PR #6).
 
 ### Completion criteria
 
@@ -48,6 +156,8 @@ This plan covers the complete first version of the system using ASP.NET Core MVC
 
 ## Milestone 2 — Authentication and Access Control
 
+**WBS:** 3.00, 5.00–7.00, 9.00–12.00
+
 **Goal:** Allow secure access and ensure each person sees only their authorized functions.
 
 ### Tasks
@@ -58,7 +168,7 @@ This plan covers the complete first version of the system using ASP.NET Core MVC
 - [ ] Build role-based dashboards and navigation.
 - [ ] Add account activation/deactivation behavior.
 - [ ] Implement Forgot Password using Identity reset tokens, MailKit, and school SMTP.
-- [ ] Apply password policy, sign-in lockout, HTTPS, and authorization rules.
+- [x] Apply password policy, sign-in lockout, HTTPS redirect, and global authorization rules; apply per-page permission rules as each feature lands (PR #6).
 
 ### Completion criteria
 
@@ -70,6 +180,8 @@ This plan covers the complete first version of the system using ASP.NET Core MVC
 ---
 
 ## Milestone 3 — Master Data Management
+
+**WBS:** 14.00–18.00, 20.00–23.00, 25.00–28.00, 30.00–32.00
 
 **Goal:** Make the users and inventory ready for real borrowing transactions.
 
@@ -92,6 +204,8 @@ This plan covers the complete first version of the system using ASP.NET Core MVC
 ---
 
 ## Milestone 4 — Equipment Discovery and Reservations
+
+**WBS:** 34.00–37.00
 
 **Goal:** Let borrowers find equipment and submit valid reservation requests.
 
@@ -116,6 +230,8 @@ This plan covers the complete first version of the system using ASP.NET Core MVC
 ---
 
 ## Milestone 5 — Approval, Release, and Return Workflow
+
+**WBS:** 39.00–42.00, 44.00–47.00
 
 **Goal:** Complete the controlled equipment handover and return lifecycle.
 
@@ -142,6 +258,8 @@ This plan covers the complete first version of the system using ASP.NET Core MVC
 
 ## Milestone 6 — Availability Calendar and Reports
 
+**WBS:** 49.00–50.00, 52.00–55.00
+
 **Goal:** Give users visibility into schedules and give staff operational accountability.
 
 ### Tasks
@@ -163,6 +281,8 @@ This plan covers the complete first version of the system using ASP.NET Core MVC
 ---
 
 ## Milestone 7 — Quality Assurance and Documentation
+
+**WBS:** 56.00
 
 **Goal:** Ensure the system is reliable, secure, usable, and ready for release.
 
@@ -188,6 +308,8 @@ This plan covers the complete first version of the system using ASP.NET Core MVC
 
 ## Milestone 8 — Deployment and Handover
 
+**WBS:** No WBS rows yet — add when scheduled.
+
 **Goal:** Publish the system and prepare the responsible school staff to operate it.
 
 ### Tasks
@@ -208,6 +330,19 @@ This plan covers the complete first version of the system using ASP.NET Core MVC
 - The school administrator can manage users, equipment, and transactions.
 - Backup and recovery responsibilities are defined.
 
+## Additional work (not in WBS)
+
+| Date | Work | Owner | PR |
+| --- | --- | --- | --- |
+| 9/25/2026 | GitHub Actions CI + branch protection on `main` | Laroco | #6 |
+| 9/25/2026 | Patched vulnerable build dependencies | Laroco | #6 |
+| 9/24/2026 | How to run the system guide (`doc/Instruction_On_How_To_Run.md`) | Bansag | #1, #5 |
+
+## Open questions
+
+- **OTP vs reset link (WBS 10.00–11.00).** The WBS says “Receive OTP in Email / OTP Verification Page,” but `Workflow.md` and `PROJECT_DOCUMENTATION.md` describe an **Identity reset link**. Identity can do either without a custom table: a 6-digit code can come from the email token provider, and a link can come from `GeneratePasswordResetTokenAsync`. Bansag decides, then the documentation is aligned.
+- **Milestone 8 (Deployment)** has no WBS rows. Decide whether it is in scope for this term.
+
 ## Suggested Implementation Order
 
 ```text
@@ -223,3 +358,9 @@ Foundation
 ## Definition of Done for Version 1
 
 The first version is complete when borrowers can securely reserve one available equipment item per reservation; custodians can approve, release, and receive it; administrators can manage people and inventory; and authorized users can view availability and transaction history. All core actions must be protected by Identity roles/permissions, stored in Microsoft SQL Server, styled with the compiled Tailwind CSS output, and usable through the deployed ASP.NET Core MVC application.
+
+## Change log
+
+| Date | Change | By |
+| --- | --- | --- |
+| 9/25/2026 | Added WBS Feature Tracker; marked 1.00 and 3.00 Done | Laroco |
