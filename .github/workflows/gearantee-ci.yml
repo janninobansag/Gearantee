@@ -1,0 +1,102 @@
+name: Gearantee CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel an older run when new commits are pushed to the same PR or branch.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  SOLUTION: ASI.Basecode.sln
+
+jobs:
+  build:
+    name: Build & checks
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET (version from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION }} --no-restore --configuration Release
+
+      - name: Check for missing EF Core migrations
+        shell: pwsh
+        run: |
+          dotnet tool restore
+          dotnet ef migrations has-pending-model-changes `
+            --project ASI.Basecode.Data/ASI.Basecode.Data.csproj `
+            --startup-project ASI.Basecode.WebApp/ASI.Basecode.WebApp.csproj `
+            --configuration Release `
+            --no-build
+
+      - name: Check for vulnerable NuGet packages
+        shell: pwsh
+        run: |
+          $out = dotnet list ${{ env.SOLUTION }} package --vulnerable --include-transitive 2>&1 | Out-String
+          Write-Output $out
+          if ($out -match "has the following vulnerable packages") {
+            Write-Error "Vulnerable NuGet packages found. Update them before merging."
+            exit 1
+          }
+
+      # Enable when a test project exists (for example, ASI.Basecode.Tests).
+      # - name: Test
+      #   run: dotnet test ${{ env.SOLUTION }} --no-build --configuration Release
+
+  codeql:
+    name: CodeQL security scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET (version from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
+          build-mode: manual
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION }} --configuration Release
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:csharp

@@ -49,6 +49,11 @@ namespace ASI.Basecode.WebApp.Authorization
             }
 
             identity.AddClaim(new Claim("user_code", user.UserCode));
+            identity.AddClaim(new Claim(
+                "display_name",
+                string.IsNullOrWhiteSpace(user.DisplayName)
+                    ? user.UserCode
+                    : user.DisplayName));
             return identity;
         }
     }
