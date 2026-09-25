@@ -1,6 +1,5 @@
 using ASI.Basecode.Data;
 using ASI.Basecode.Data.Models;
-using ASI.Basecode.Services.Manager;
 using ASI.Basecode.WebApp.Models;
 using ASI.Basecode.WebApp.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -25,7 +24,6 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly AsiBasecodeDBContext _dbContext;
-        private readonly SessionManager _sessionManager;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
@@ -44,16 +42,17 @@ namespace ASI.Basecode.WebApp.Controllers
             _signInManager = signInManager;
             _roleManager = roleManager;
             _dbContext = dbContext;
-            _sessionManager = new SessionManager(_session);
         }
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> Login(string returnUrl = null)
+        public IActionResult Login(string returnUrl = null)
         {
-            await _signInManager.SignOutAsync();
-            _sessionManager.Clear();
-            _session.SetString("SessionId", Guid.NewGuid().ToString());
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                return RedirectToAction("Index", "Dashboard");
+            }
+
             ViewData["ReturnUrl"] = returnUrl;
             return View();
         }
@@ -71,12 +70,13 @@ namespace ASI.Basecode.WebApp.Controllers
                 return View(model);
             }
 
-            var normalizedUserName = _userManager.NormalizeName(model.UserId);
-            var normalizedEmail = _userManager.NormalizeEmail(model.UserId);
-            var user = await _userManager.Users.SingleOrDefaultAsync(x =>
+            var login = model.UserId?.Trim();
+            var normalizedUserName = _userManager.NormalizeName(login);
+            var normalizedEmail = _userManager.NormalizeEmail(login);
+            var user = await _userManager.Users.FirstOrDefaultAsync(x =>
                 x.NormalizedUserName == normalizedUserName ||
                 x.NormalizedEmail == normalizedEmail ||
-                x.UserCode == model.UserId);
+                x.UserCode == login);
 
             if (user == null || !user.IsActive)
             {
@@ -90,17 +90,21 @@ namespace ASI.Basecode.WebApp.Controllers
                 model.RememberMe,
                 lockoutOnFailure: true);
 
+            if (result.IsLockedOut)
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    "Too many failed attempts. Your account is locked for 15 minutes.");
+                return View(model);
+            }
+
             if (!result.Succeeded)
             {
                 ModelState.AddModelError(string.Empty, InvalidLoginMessage);
                 return View(model);
             }
 
-            _session.SetString(
-                "UserName",
-                string.IsNullOrWhiteSpace(user.DisplayName)
-                    ? user.UserCode
-                    : user.DisplayName);
+            _logger.LogInformation("User {UserCode} signed in.", user.UserCode);
 
             if (!string.IsNullOrWhiteSpace(returnUrl) &&
                 Url.IsLocalUrl(returnUrl))
@@ -108,7 +112,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 return LocalRedirect(returnUrl);
             }
 
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Index", "Dashboard");
         }
 
         [HttpGet]
@@ -215,8 +219,9 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SignOutUser()
         {
+            var userCode = User.FindFirst("user_code")?.Value ?? User.Identity?.Name;
             await _signInManager.SignOutAsync();
-            _sessionManager.Clear();
+            _logger.LogInformation("User {UserCode} signed out.", userCode);
             return RedirectToAction(nameof(Login));
         }
 

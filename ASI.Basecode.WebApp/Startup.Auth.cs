@@ -1,6 +1,7 @@
 using ASI.Basecode.Data;
 using ASI.Basecode.Data.Models;
 using ASI.Basecode.WebApp.Authorization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Authorization;
@@ -32,6 +33,9 @@ namespace ASI.Basecode.WebApp
                 .AddEntityFrameworkStores<AsiBasecodeDBContext>()
                 .AddDefaultTokenProviders();
 
+            _services.Configure<SecurityStampValidatorOptions>(options =>
+                options.ValidationInterval = TimeSpan.FromMinutes(1));
+
             _services.ConfigureApplicationCookie(options =>
             {
                 options.Cookie.Name = "Gearantee.Identity";
@@ -43,6 +47,24 @@ namespace ASI.Basecode.WebApp
                 options.AccessDeniedPath = "/Account/AccessDenied";
                 options.ExpireTimeSpan = TimeSpan.FromHours(2);
                 options.SlidingExpiration = true;
+                options.Events.OnValidatePrincipal = async context =>
+                {
+                    await SecurityStampValidator.ValidatePrincipalAsync(context);
+                    if (context.Principal?.Identity?.IsAuthenticated != true)
+                    {
+                        return;
+                    }
+
+                    var userManager = context.HttpContext.RequestServices
+                        .GetRequiredService<UserManager<ApplicationUser>>();
+                    var user = await userManager.GetUserAsync(context.Principal);
+                    if (user == null || !user.IsActive)
+                    {
+                        context.RejectPrincipal();
+                        await context.HttpContext.SignOutAsync(
+                            IdentityConstants.ApplicationScheme);
+                    }
+                };
             });
 
             _services.AddScoped<

@@ -3,18 +3,16 @@ using System.Text.Json.Serialization;
 
 namespace ASI.Basecode.WebApp.Models
 {
-    /// <summary>
-    /// Login View Model
-    /// </summary>
     public class LoginViewModel
     {
-        /// <summary>ユーザーID</summary>
         [JsonPropertyName("userId")]
-        [Required(ErrorMessage = "UserId is required.")]
+        [Required(ErrorMessage = "Enter your user code, school ID, or email.")]
+        [Display(Name = "User code or email")]
         public string UserId { get; set; }
-        /// <summary>パスワード</summary>
+
         [JsonPropertyName("password")]
-        [Required(ErrorMessage = "Password is required.")]
+        [Required(ErrorMessage = "Enter your password.")]
+        [DataType(DataType.Password)]
         public string Password { get; set; }
 
         [Display(Name = "Remember me")]

@@ -1,13 +1,16 @@
-﻿@using Microsoft.AspNetCore.Http
-@inject IHttpContextAccessor HttpContextAccessor
+@{
+    var displayName = User.FindFirst("display_name")?.Value ?? User.Identity?.Name;
+}
 <header class="@((ViewBag.LoginView == true) ? "hide-navbar" : "")">
     <div class="logosec hover-pointer">
         <img src="~/img/asi-logo-invert.svg"
              style="width: 185px;" alt="logo"
              onclick="window.location.href = '@Url.Action("Index", "Home")';">
     </div>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
     <div class="logosec">
-        @HttpContextAccessor.HttpContext.Session.GetString("UserName")
+        @displayName
         <div class="mr-20 hover-pointer" style="position: relative">
             <div class="dp">
                 <img src="~/img/profile-logo.png"
@@ -34,4 +37,5 @@
             </div>
         </div>
     </div>
+    }
 </header>
