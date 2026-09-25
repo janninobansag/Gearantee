@@ -50,7 +50,7 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             if (User.Identity?.IsAuthenticated == true)
             {
-                return RedirectToAction("Index", "Dashboard");
+                return RedirectToAction("Index", "Home");
             }
 
             ViewData["ReturnUrl"] = returnUrl;
@@ -112,7 +112,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 return LocalRedirect(returnUrl);
             }
 
-            return RedirectToAction("Index", "Dashboard");
+            return RedirectToAction("Index", "Home");
         }
 
         [HttpGet]
@@ -221,6 +221,7 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             var userCode = User.FindFirst("user_code")?.Value ?? User.Identity?.Name;
             await _signInManager.SignOutAsync();
+            HttpContext.Session.Clear();
             _logger.LogInformation("User {UserCode} signed out.", userCode);
             return RedirectToAction(nameof(Login));
         }

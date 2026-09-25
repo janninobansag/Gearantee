@@ -31,11 +31,11 @@
                 <div class="login-field">
                     <label asp-for="Password"></label>
                     <div class="login-password-wrap">
-                        <input asp-for="Password" id="login-password" class="login-input"
+                        <input asp-for="Password" class="login-input"
                                autocomplete="current-password"
                                placeholder="Enter your password" />
                         <button id="toggle-password" class="login-password-toggle" type="button"
-                                aria-controls="login-password" aria-label="Show password">
+                                aria-controls="Password" aria-label="Show password">
                             Show
                         </button>
                     </div>
@@ -81,7 +81,7 @@
             toastr.success(successMessage);
         }
 
-        const passwordInput = document.getElementById("login-password");
+        const passwordInput = document.getElementById("Password");
         const passwordToggle = document.getElementById("toggle-password");
         const loginForm = document.getElementById("login-form");
         const submitButton = document.getElementById("login-submit");
@@ -96,10 +96,16 @@
         });
 
         loginForm.addEventListener("submit", function () {
-            if (loginForm.checkValidity()) {
-                submitButton.disabled = true;
-                submitButton.textContent = "Signing in...";
+            if (window.jQuery && !$(loginForm).valid()) {
+                return;
             }
+
+            if (!window.jQuery && !loginForm.checkValidity()) {
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.textContent = "Signing in...";
         });
     </script>
 }
