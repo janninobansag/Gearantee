@@ -33,6 +33,9 @@ namespace ASI.Basecode.WebApp
                 .AddEntityFrameworkStores<AsiBasecodeDBContext>()
                 .AddDefaultTokenProviders();
 
+            _services.Configure<DataProtectionTokenProviderOptions>(options =>
+                options.TokenLifespan = TimeSpan.FromHours(1));
+
             _services.Configure<SecurityStampValidatorOptions>(options =>
                 options.ValidationInterval = TimeSpan.FromMinutes(1));
 
