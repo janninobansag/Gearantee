@@ -1,8 +1,225 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@model BorrowerDashboardViewModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+}
+@{
+    ViewData["Title"] = "Borrower Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="borrower-dashboard">
+    <aside class="borrower-sidebar" aria-label="Borrower workspace navigation">
+        <a class="borrower-brand" asp-controller="Home" asp-action="Index">
+            <img src="~/img/Navbar Logo.png" alt="Gearantee" />
+        </a>
+
+        <section class="borrower-identity" aria-label="Signed-in borrower">
+            <span class="dashboard-eyebrow">Signed in as</span>
+            <div class="borrower-identity-card">
+                <span class="borrower-avatar">@GetInitials(Model.DisplayName)</span>
+                <span class="borrower-identity-copy">
+                    <strong>@Model.DisplayName</strong>
+                    <small>@Model.SchoolId@if (!string.IsNullOrWhiteSpace(Model.Department)) {<text> · @Model.Department</text>}</small>
+                </span>
+            </div>
+        </section>
+
+        <nav class="borrower-nav" aria-label="Borrower workspace">
+            <span class="dashboard-eyebrow">Borrower workspace</span>
+            <a class="borrower-nav-link is-active" asp-controller="Home" asp-action="Index">
+                <span class="nav-dot"></span>
+                Dashboard
+            </a>
+            <a class="borrower-nav-link" href="#equipment-catalog">
+                <span class="nav-dot"></span>
+                Equipment Catalog
+            </a>
+            <a class="borrower-nav-link" href="#new-reservation">
+                <span class="nav-dot"></span>
+                New Reservation
+            </a>
+            <a class="borrower-nav-link" href="#availability-calendar">
+                <span class="nav-dot"></span>
+                Availability Calendar
+            </a>
+        </nav>
+
+        <div class="borrower-sidebar-footer">
+            <form asp-controller="Account" asp-action="SignOutUser" method="post">
+                <button class="sidebar-signout" type="submit">Sign out</button>
+            </form>
+        </div>
+    </aside>
+
+    <div class="borrower-main">
+        <header class="borrower-header">
+            <div>
+                <span class="dashboard-eyebrow">Borrower workspace</span>
+                <h1>@Model.Greeting, @Model.FirstName</h1>
+            </div>
+            <div class="borrower-header-tools">
+                <button class="dashboard-icon-button theme-button" type="button" aria-label="Toggle theme">☼</button>
+                <label class="dashboard-search">
+                    <span aria-hidden="true">⌕</span>
+                    <input type="search" placeholder="Search item code, name, borrower" aria-label="Search equipment" />
+                </label>
+                <button class="dashboard-icon-button notification-button" type="button" aria-label="Notifications">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="borrower-content">
+            <section class="dashboard-summary-grid" aria-label="Borrowing summary">
+                <article class="summary-card">
+                    <span class="dashboard-eyebrow">On loan now</span>
+                    <div class="summary-value-row">
+                        <strong>@Model.OnLoanCount</strong>
+                        <span class="summary-pill is-borrowed">Borrowed</span>
+                    </div>
+                    <small>Equipment currently with you</small>
+                </article>
+                <article class="summary-card">
+                    <span class="dashboard-eyebrow">Pending requests</span>
+                    <div class="summary-value-row">
+                        <strong>@Model.PendingRequestCount</strong>
+                        <span class="summary-pill is-pending">Pending</span>
+                    </div>
+                    <small>Awaiting custodian decision</small>
+                </article>
+                <article class="summary-card">
+                    <span class="dashboard-eyebrow">Ready to collect</span>
+                    <div class="summary-value-row">
+                        <strong>@Model.ReadyToCollectCount</strong>
+                        <span class="summary-pill is-ready">Awaiting Release</span>
+                    </div>
+                    <small>Approved reservations</small>
+                </article>
+                <article class="summary-card">
+                    <span class="dashboard-eyebrow">Overdue</span>
+                    <div class="summary-value-row">
+                        <strong>@Model.OverdueCount</strong>
+                        <span class="summary-pill is-overdue">Overdue</span>
+                    </div>
+                    <small>Return equipment on time</small>
+                </article>
+            </section>
+
+            <div class="dashboard-columns">
+                <section class="dashboard-panel loans-panel" aria-labelledby="loans-heading">
+                    <header class="panel-heading">
+                        <h2 id="loans-heading">My equipment on loan</h2>
+                        <a href="#availability-calendar">Open calendar</a>
+                    </header>
+
+                    @if (Model.Loans.Count == 0)
+                    {
+                        <div class="dashboard-empty-state">
+                            <strong>No equipment on loan</strong>
+                            <span>Your active loans will appear here.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="loan-grid">
+                            @foreach (var loan in Model.Loans)
+                            {
+                                <article class="loan-card">
+                                    <div class="loan-card-topline">
+                                        <span>@loan.ItemCode</span>
+                                        <span class="loan-status @(loan.IsOverdue ? "is-overdue" : "is-borrowed")">@loan.StatusLabel</span>
+                                    </div>
+                                    <h3>@loan.ItemName</h3>
+                                    @if (!string.IsNullOrWhiteSpace(loan.ImageUrl))
+                                    {
+                                        <img class="loan-image" src="@loan.ImageUrl" alt="@loan.ItemName" />
+                                    }
+                                    else
+                                    {
+                                        <div class="loan-image loan-image-placeholder" aria-label="No equipment image">@loan.ItemName</div>
+                                    }
+                                    <dl class="loan-details">
+                                        <div>
+                                            <dt>Due</dt>
+                                            <dd>@loan.DueAt.ToLocalTime().ToString("d MMM · HH:mm")</dd>
+                                        </div>
+                                        <div>
+                                            <dt>Released</dt>
+                                            <dd>@loan.ReleasedAt.ToLocalTime().ToString("d MMM · HH:mm")</dd>
+                                        </div>
+                                    </dl>
+                                </article>
+                            }
+                        </div>
+                    }
+                </section>
+
+                <div class="dashboard-right-column">
+                    <section class="dashboard-panel requests-panel" aria-labelledby="requests-heading">
+                        <header class="panel-heading">
+                            <h2 id="requests-heading">My requests</h2>
+                        </header>
+
+                        @if (Model.Requests.Count == 0)
+                        {
+                            <div class="dashboard-empty-state compact">
+                                <strong>No requests yet</strong>
+                                <span>Start a new reservation when you need equipment.</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="request-list">
+                                @foreach (var request in Model.Requests)
+                                {
+                                    <article class="request-row">
+                                        <span class="request-accent @request.StatusClass"></span>
+                                        <div class="request-body">
+                                            <div class="request-title-row">
+                                                <h3>@request.ItemName@if (!string.IsNullOrWhiteSpace(request.ItemCode)) {<small> · @request.ItemCode</small>}</h3>
+                                                <span class="summary-pill @request.StatusClass">@request.StatusLabel</span>
+                                            </div>
+                                            <span class="request-date">@request.ReservationStart.ToLocalTime().ToString("d MMM HH:mm") → @request.ReservationEnd.ToLocalTime().ToString("HH:mm")</span>
+                                            <p>@request.Details</p>
+                                        </div>
+                                    </article>
+                                }
+                            </div>
+                        }
+
+                        <a class="dashboard-primary-action" href="#new-reservation">New reservation</a>
+                    </section>
+
+                    <section class="dashboard-panel eligibility-panel" aria-labelledby="eligibility-heading">
+                        <header class="panel-heading">
+                            <h2 id="eligibility-heading">Eligibility</h2>
+                        </header>
+                        <p>Only active, eligible borrowers can submit requests.</p>
+                        <div class="eligibility-status">
+                            <span class="eligibility-pill @(Model.IsEligible ? "is-eligible" : "is-review")">
+                                @(Model.IsEligible ? "Eligible" : "Review")
+                            </span>
+                            <span>@Model.EligibilityMessage</span>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+@functions {
+    private static string GetInitials(string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            return "U";
+        }
+
+        var parts = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0].Substring(0, 1).ToUpperInvariant()
+            : string.Concat(parts[0][0], parts[^1][0]).ToUpperInvariant();
+    }
+}
