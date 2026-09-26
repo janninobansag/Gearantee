@@ -13,9 +13,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css">
     @RenderSection("Styles", required: false)
 </head>
-<body>
+<body class="@(ViewBag.LoginPage == true ? "login-body" : string.Empty)">
     <partial name="_Header" />
-    <div class="container">
+    <div class="@(ViewBag.LoginPage == true ? "login-body-container" : "container")">
         <main role="main">
             @RenderBody()
         </main>

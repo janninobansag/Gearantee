@@ -57,6 +57,50 @@ namespace ASI.Basecode.WebApp.Controllers
             return View();
         }
 
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ForgotPassword()
+        {
+            return View(new ForgotPasswordViewModel());
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(
+            ForgotPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var email = model.Email.Trim();
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user != null && user.IsActive)
+            {
+                _logger.LogInformation(
+                    "Password reset requested for user {UserCode}.",
+                    user.UserCode);
+            }
+
+            TempData["PasswordResetEmail"] = email;
+            return RedirectToAction(nameof(ForgotPasswordCheckInbox));
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ForgotPasswordCheckInbox()
+        {
+            if (TempData["PasswordResetEmail"] is not string email ||
+                string.IsNullOrWhiteSpace(email))
+            {
+                return RedirectToAction(nameof(ForgotPassword));
+            }
+
+            return View(new ForgotPasswordViewModel { Email = email });
+        }
+
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]

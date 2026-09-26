@@ -36,9 +36,9 @@ Database: <default>
 Run this query once:
 
 ```sql
-IF DB_ID(N'AsiBasecodeDB') IS NULL
+IF DB_ID(N'GearanteeDev') IS NULL
 BEGIN
-    CREATE DATABASE [AsiBasecodeDB];
+    CREATE DATABASE [GearanteeDev];
 END
 ```
 
@@ -51,7 +51,7 @@ ASI.Basecode.WebApp\appsettings.Development.json
 It points to:
 
 ```text
-Server=(localdb)\MSSQLLocalDB;Database=AsiBasecodeDB
+Server=(localdb)\MSSQLLocalDB;Database=GearanteeDev
 ```
 
 ## 3. Build the solution
@@ -81,7 +81,7 @@ Press `Ctrl+C` to stop the application.
 
 ## Important database note
 
-The repository currently has no EF Core `Migrations` folder. Creating `AsiBasecodeDB` creates an empty database only; it does not create the application tables.
+The repository includes an EF Core `Migrations` folder. Creating `GearanteeDev` creates an empty database only; apply the committed migration to create the application tables.
 
 If the application reports that a table such as `Users` does not exist, the database schema must first be created through an EF migration or an approved SQL schema script.
 
@@ -106,7 +106,7 @@ sqllocaldb start MSSQLLocalDB
 
 ### Database cannot be opened
 
-Confirm that the database name is exactly `AsiBasecodeDB` and that the server is:
+Confirm that the database name is exactly `GearanteeDev` and that the server is:
 
 ```text
 (localdb)\MSSQLLocalDB
