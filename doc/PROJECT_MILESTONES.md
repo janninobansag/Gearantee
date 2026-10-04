@@ -30,10 +30,10 @@ The tracker contains 44 leaf features. Group headings such as 2.00 and 4.00 are 
 
 | Status | Count |
 | --- | --- |
-| Done | 5 |
+| Done | 9 |
 | In Review | 9 |
 | In Progress | 0 |
-| Not Started | 30 |
+| Not Started | 26 |
 | Blocked | 0 |
 
 ### By member
@@ -42,7 +42,7 @@ Shared rows count for each assigned member.
 
 | Member | Assigned | Done |
 | --- | --- | --- |
-| Member 1 — Gesim | 6 (1.00, 20–23, 56) | 1 |
+| Member 1 — Gesim | 6 (1.00, 20–23, 56) | 5 |
 | Member 2 — Bansag | 13 (1.00, 9–12, 25–28, 52–55) | 1 |
 | Member 3 — Laroco | 12 (1.00, 3, 5–7, 14–18, 49–50) | 5 |
 | Member 4 — Cancencia | 7 (30–32, 39–42) | 0 |
@@ -71,10 +71,10 @@ Shared rows count for each assigned member.
 | 17.00 | Configure Role Access Permissions | Laroco | 9/29/2026 | 10/2/2026 | 3 | 10/1/2026 | | In Review | #22 | M3 |
 | 18.00 | Deactivate Users | Laroco | 9/29/2026 | 10/2/2026 | 3 | 10/1/2026 | | In Review | #22 | M3 |
 | **19.00** | **Master Data: Equipment Category Management** | | | | | | | | | |
-| 20.00 | Create Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
-| 21.00 | Read Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
-| 22.00 | Update Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
-| 23.00 | Delete/Deactivate Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
+| 20.00 | Create Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | 10/4/2026 | 10/4/2026 | Done | — | M3 |
+| 21.00 | Read Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | 10/4/2026 | 10/4/2026 | Done | — | M3 |
+| 22.00 | Update Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | 10/4/2026 | 10/4/2026 | Done | — | M3 |
+| 23.00 | Delete/Deactivate Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | 10/4/2026 | 10/4/2026 | Done | — | M3 |
 | **24.00** | **Master Data: Equipment Item Management** | | | | | | | | | |
 | 25.00 | View Equipment Items | Bansag | 10/3/2026 | 10/6/2026 | 3 | | | Not Started | | M3 |
 | 26.00 | Register Equipment Item | Bansag | 10/3/2026 | 10/6/2026 | 3 | | | Not Started | | M3 |
@@ -189,7 +189,7 @@ Shared rows count for each assigned member.
 
 - [ ] Build User and Role Management for administrators.
 - [ ] Build Borrower Profile Management, including school ID, department, contact information, and eligibility.
-- [ ] Build Equipment Category Management.
+- [x] Build Equipment Category Management.
 - [ ] Build Equipment Item Management with item code, name/model, serial number, condition, status, and storage location.
 - [ ] Add item filters, search, validation, active/inactive controls, and item status updates.
 - [ ] Seed representative development data for each role and equipment category.
@@ -376,3 +376,4 @@ The first version is complete when borrowers can securely reserve one available 
 | 10/1/2026 | Started WBS 14.00–18.00 implementation for user accounts, role assignment, permissions, and account activation management | Laroco |
 | 10/1/2026 | Implemented the user-administration screens, Identity workflows, permission controls, SQL Server safeguards, documentation, and regression tests; awaiting PR review before advancing WBS status | Laroco |
 | 10/2/2026 | Moved WBS 14.00–18.00 to In Review for PR #22; addressed REQ-01 with atomic CSV account creation, UX/AUDIT-01 with trusted edit redisplay and no-op activation handling, and ROLE-EDGE-01 with inactive-admin demotion; added regression tests and import instructions | Laroco |
+| 10/4/2026 | Implemented equipment category creation (WBS 20.00) with duplicate checking, admin authorization, Tailwind views, and unit/authorization tests | Gesim |
