@@ -51,7 +51,6 @@ namespace ASI.Basecode.WebApp.Controllers
             SetPageData(item.ItemName);
             ViewData["From"] = from;
             ViewData["To"] = to;
-            ViewData["SuccessMessage"] = TempData["SuccessMessage"];
             return View(item);
         }
 

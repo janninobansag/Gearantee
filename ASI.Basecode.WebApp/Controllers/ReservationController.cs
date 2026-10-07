@@ -13,7 +13,7 @@ using System;
 namespace ASI.Basecode.WebApp.Controllers
 {
     /// <summary>
-    /// Borrower reservations: submit a request (WBS 35.00).
+    /// Borrower reservations: submit a request (WBS 35.00) and view status (WBS 36.00).
     /// </summary>
     [Authorize(Roles = DomainValues.Roles.Borrower)]
     [Authorize(Policy = DomainValues.Permissions.ReservationCreate)]
@@ -35,6 +35,30 @@ namespace ASI.Basecode.WebApp.Controllers
             _catalogService = catalogService;
         }
 
+        // GET: /Reservation?status=Pending&page=1
+        [HttpGet]
+        public IActionResult Index(string status, int page = 1)
+        {
+            var model = _reservationService.GetMyReservations(UserId, status, page);
+            SetPageData("My reservations");
+            ViewData["SuccessMessage"] = TempData["SuccessMessage"];
+            ViewData["ErrorMessage"] = TempData["ErrorMessage"];
+            return View(model);
+        }
+
+        // GET: /Reservation/Details/5
+        [HttpGet]
+        public IActionResult Details(long id)
+        {
+            var reservation = _reservationService.RetrieveMyReservation(id, UserId);
+            if (reservation == null) return NotFound();
+
+            SetPageData(reservation.ReservationCode);
+            ViewData["SuccessMessage"] = TempData["SuccessMessage"];
+            ViewData["ErrorMessage"] = TempData["ErrorMessage"];
+            return View(reservation);
+        }
+
         // GET: /Reservation/Create?equipmentId=5&from=...&to=...
         [HttpGet]
         public IActionResult Create(long equipmentId, DateTime? from, DateTime? to)
@@ -50,7 +74,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 Item = item
             };
 
-            SetPageData();
+            SetCreatePageData();
             return View(model);
         }
 
@@ -64,7 +88,7 @@ namespace ASI.Basecode.WebApp.Controllers
 
             if (!ModelState.IsValid)
             {
-                SetPageData();
+                SetCreatePageData();
                 return View(model);
             }
 
@@ -72,21 +96,25 @@ namespace ASI.Basecode.WebApp.Controllers
             if (!result.Succeeded)
             {
                 ModelState.AddModelError(string.Empty, result.Message);
-                SetPageData();
+                SetCreatePageData();
                 return View(model);
             }
 
-            // WBS 36 will send the borrower to My Reservations instead.
             TempData["SuccessMessage"] = result.Message;
-            return RedirectToAction("Details", "Catalog", new { id = model.EquipmentId });
+            return RedirectToAction(nameof(Details), new { id = result.ReservationId });
         }
 
-        private void SetPageData()
+        private void SetCreatePageData()
         {
-            ViewData["Title"] = "Request a reservation";
+            SetPageData("Request a reservation");
+            ViewData["EligibilityError"] = _reservationService.CheckBorrowerEligibility(UserId);
+        }
+
+        private void SetPageData(string title)
+        {
+            ViewData["Title"] = title;
             ViewData["Eyebrow"] = "Borrower workspace";
             ViewData["PageDate"] = ManilaClock.NowLocal.ToString("ddd d MMM yyyy");
-            ViewData["EligibilityError"] = _reservationService.CheckBorrowerEligibility(UserId);
         }
     }
 }

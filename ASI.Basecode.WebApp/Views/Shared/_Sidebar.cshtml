@@ -59,6 +59,7 @@
         @if (isBorrower && User.HasClaim("permission", DomainValues.Permissions.ReservationCreate))
         {
             <a asp-controller="Catalog" asp-action="Index" class="nav-item @(currentController == "Reservation" && currentAction == "Create" ? "nav-item-active" : "")" aria-current="@(currentController == "Reservation" && currentAction == "Create" ? "page" : null)">@await Html.PartialAsync("Icons/_Icon", "calendar")<span>New reservation</span></a>
+            <a asp-controller="Reservation" asp-action="Index" class="nav-item @(currentController == "Reservation" && currentAction != "Create" ? "nav-item-active" : "")" aria-current="@(currentController == "Reservation" && currentAction != "Create" ? "page" : null)">@await Html.PartialAsync("Icons/_Icon", "review")<span>My reservations</span></a>
             <span class="nav-item nav-item-disabled">@await Html.PartialAsync("Icons/_Icon", "calendar")<span class="flex-1">Availability calendar</span><span class="soon-tag">Soon</span></span>
         }
         @if (isCustodian && User.HasClaim("permission", DomainValues.Permissions.ReservationReview))

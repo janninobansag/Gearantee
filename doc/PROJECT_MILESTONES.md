@@ -32,8 +32,8 @@ The tracker contains 44 leaf features. Group headings such as 2.00 and 4.00 are 
 | --- | --- |
 | Done | 5 |
 | In Review | 9 |
-| In Progress | 2 |
-| Not Started | 28 |
+| In Progress | 3 |
+| Not Started | 27 |
 | Blocked | 0 |
 
 ### By member
@@ -87,7 +87,7 @@ Shared rows count for each assigned member.
 | **33.00** | **Transactions: Equipment Reservation** | | | | | | | | | |
 | 34.00 | Search & View Available Items Page | Cataraja | 10/6/2026 | 10/7/2026 | 1 | 10/7/2026 | | In Progress | | M4 |
 | 35.00 | Create and Submit Reservation Request | Cataraja | 10/6/2026 | 10/8/2026 | 2 | 10/7/2026 | | In Progress | | M4 |
-| 36.00 | View Reservation Status | Cataraja | 10/6/2026 | 10/8/2026 | 2 | | | Not Started | | M4 |
+| 36.00 | View Reservation Status | Cataraja | 10/6/2026 | 10/8/2026 | 2 | 10/7/2026 | | In Progress | | M4 |
 | 37.00 | Cancel Reservation | Cataraja | 10/6/2026 | 10/8/2026 | 2 | | | Not Started | | M4 |
 | **38.00** | **Transactions: Approval and Release** | | | | | | | | | |
 | 39.00 | View Reservation Requests | Cancencia | 10/9/2026 | 10/11/2026 | 2 | | | Not Started | | M5 |
@@ -378,3 +378,4 @@ The first version is complete when borrowers can securely reserve one available 
 | 10/2/2026 | Moved WBS 14.00–18.00 to In Review for PR #22; addressed REQ-01 with atomic CSV account creation, UX/AUDIT-01 with trusted edit redisplay and no-op activation handling, and ROLE-EDGE-01 with inactive-admin demotion; added regression tests and import instructions | Laroco |
 | 10/7/2026 | Started WBS 34.00: borrower equipment catalog with search, category and free-window filters, item details with booked times, and the shared reservation availability rule | Cataraja |
 | 10/7/2026 | Started WBS 35.00: borrower reservation request form with eligibility, availability, and duplicate-request checks | Cataraja |
+| 10/7/2026 | Started WBS 36.00: My Reservations list with status tabs and a reservation detail page; stale pending requests are marked Expired when viewed | Cataraja |

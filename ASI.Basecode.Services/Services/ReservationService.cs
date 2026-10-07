@@ -5,13 +5,24 @@ using ASI.Basecode.Services.ServiceModels.Reservations;
 using ASI.Basecode.Services.Utilities;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace ASI.Basecode.Services.Services
 {
     public class ReservationService : IReservationService
     {
+        public const int PageSize = 20;
         private const int PurposeMaxLength = 1000;
+
+        private static readonly string[] StatusTabs =
+        {
+            DomainValues.ReservationStatuses.Pending,
+            DomainValues.ReservationStatuses.Approved,
+            DomainValues.ReservationStatuses.Rejected,
+            DomainValues.ReservationStatuses.Cancelled,
+            DomainValues.ReservationStatuses.Expired
+        };
 
         private readonly IReservationRepository _reservationRepository;
         private readonly IEquipmentItemRepository _equipmentItemRepository;
@@ -148,6 +159,198 @@ namespace ASI.Basecode.Services.Services
             };
         }
 
+        public ReservationIndexViewModel GetMyReservations(string userId, string status, int page)
+        {
+            var model = new ReservationIndexViewModel();
+            var profile = FindProfile(userId);
+            var statusFilter = NormalizeStatus(status);
+            model.StatusFilter = statusFilter ?? string.Empty;
+
+            var counts = new Dictionary<string, int>();
+            if (profile != null)
+            {
+                var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+                ExpireStalePending(profile.BorrowerProfileId, nowUtc);
+
+                var mine = _reservationRepository.GetReservations()
+                    .AsNoTracking()
+                    .Where(reservation => reservation.BorrowerProfileId == profile.BorrowerProfileId);
+
+                counts = mine
+                    .GroupBy(reservation => reservation.Status)
+                    .Select(group => new { Status = group.Key, Count = group.Count() })
+                    .ToDictionary(group => group.Status, group => group.Count);
+
+                if (statusFilter != null)
+                {
+                    mine = mine.Where(reservation => reservation.Status == statusFilter);
+                }
+
+                model.TotalCount = mine.Count();
+                model.TotalPages = Math.Max(1, (int)Math.Ceiling(model.TotalCount / (double)PageSize));
+                model.Page = Math.Clamp(page, 1, model.TotalPages);
+
+                model.Items = Project(mine
+                        .OrderByDescending(reservation => reservation.RequestedAt)
+                        .ThenByDescending(reservation => reservation.ReservationId)
+                        .Skip((model.Page - 1) * PageSize)
+                        .Take(PageSize))
+                    .ToList()
+                    .Select(row => ToListItem(new ReservationListItemViewModel(), row, nowUtc))
+                    .ToList();
+            }
+
+            model.Tabs.Add(new ReservationStatusTab { Label = "All", Count = counts.Values.Sum() });
+            foreach (var tabStatus in StatusTabs)
+            {
+                model.Tabs.Add(new ReservationStatusTab
+                {
+                    Value = tabStatus,
+                    Label = tabStatus,
+                    Count = counts.TryGetValue(tabStatus, out var count) ? count : 0
+                });
+            }
+
+            return model;
+        }
+
+        public ReservationDetailsViewModel RetrieveMyReservation(long reservationId, string userId)
+        {
+            var profile = FindProfile(userId);
+            if (profile == null)
+            {
+                return null;
+            }
+
+            var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+            ExpireStalePending(profile.BorrowerProfileId, nowUtc);
+
+            var row = Project(_reservationRepository.GetReservations()
+                    .AsNoTracking()
+                    .Where(reservation =>
+                        reservation.ReservationId == reservationId &&
+                        reservation.BorrowerProfileId == profile.BorrowerProfileId))
+                .FirstOrDefault();
+            if (row == null)
+            {
+                return null;
+            }
+
+            var reviewerName = string.Join(" ", new[] { row.ReviewerFirstName, row.ReviewerLastName }
+                .Where(part => !string.IsNullOrWhiteSpace(part)));
+
+            var details = ToListItem(new ReservationDetailsViewModel(), row, nowUtc);
+            details.Brand = row.Brand;
+            details.Model = row.Model;
+            details.Location = row.Location;
+            details.ImageUrl = row.ImageUrl;
+            details.Purpose = row.Purpose;
+            details.RejectionReason = row.RejectionReason;
+            details.ReviewerName = reviewerName.Length > 0 ? reviewerName : null;
+            details.ReviewedAtLocal = ToLocal(row.ReviewedAt);
+            details.CancelledAtLocal = ToLocal(row.CancelledAt);
+            details.ReleasedAtLocal = ToLocal(row.ReleasedAt);
+            details.ReturnedAtLocal = ToLocal(row.ReturnedAt);
+            details.ReturnedCondition = row.ReturnedCondition;
+            return details;
+        }
+
+        /// <summary>
+        /// D2: a Pending request whose start has passed was never reviewed in time, so it
+        /// becomes Expired. Written lazily whenever the borrower's reservations are read.
+        /// </summary>
+        private void ExpireStalePending(long borrowerProfileId, DateTime nowUtc)
+        {
+            var stale = _reservationRepository.GetReservations()
+                .Where(reservation =>
+                    reservation.BorrowerProfileId == borrowerProfileId &&
+                    reservation.Status == DomainValues.ReservationStatuses.Pending &&
+                    reservation.ReservationStart <= nowUtc)
+                .ToList();
+
+            foreach (var reservation in stale)
+            {
+                reservation.Status = DomainValues.ReservationStatuses.Expired;
+                reservation.UpdatedAt = nowUtc;
+                _reservationRepository.UpdateReservation(reservation);
+            }
+        }
+
+        private static string NormalizeStatus(string status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+            {
+                return null;
+            }
+
+            return StatusTabs.FirstOrDefault(tab => string.Equals(tab, status.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static IQueryable<ReservationRow> Project(IQueryable<Reservation> reservations)
+        {
+            return reservations.Select(reservation => new ReservationRow
+            {
+                ReservationId = reservation.ReservationId,
+                EquipmentId = reservation.EquipmentId,
+                ItemCode = reservation.EquipmentItem.ItemCode,
+                ItemName = reservation.EquipmentItem.ItemName,
+                CategoryName = reservation.EquipmentItem.Category.CategoryName,
+                Brand = reservation.EquipmentItem.Brand,
+                Model = reservation.EquipmentItem.Model,
+                Location = reservation.EquipmentItem.Location,
+                ImageUrl = reservation.EquipmentItem.ImageUrl,
+                ReservationStart = reservation.ReservationStart,
+                ReservationEnd = reservation.ReservationEnd,
+                RequestedAt = reservation.RequestedAt,
+                Status = reservation.Status,
+                Purpose = reservation.Purpose,
+                RejectionReason = reservation.RejectionReason,
+                ReviewerFirstName = reservation.ReviewedByUser.FirstName,
+                ReviewerLastName = reservation.ReviewedByUser.LastName,
+                ReviewedAt = reservation.ReviewedAt,
+                CancelledAt = reservation.CancelledAt,
+                HasRelease = reservation.ReleaseRecord != null,
+                ReleasedAt = reservation.ReleaseRecord != null
+                    ? reservation.ReleaseRecord.ActualReleaseAt
+                    : (DateTime?)null,
+                ReturnedAt = reservation.ReleaseRecord != null && reservation.ReleaseRecord.ReturnRecord != null
+                    ? reservation.ReleaseRecord.ReturnRecord.ActualReturnAt
+                    : (DateTime?)null,
+                ReturnedCondition = reservation.ReleaseRecord != null && reservation.ReleaseRecord.ReturnRecord != null
+                    ? reservation.ReleaseRecord.ReturnRecord.ReturnedCondition
+                    : null
+            });
+        }
+
+        private static T ToListItem<T>(T item, ReservationRow row, DateTime nowUtc)
+            where T : ReservationListItemViewModel
+        {
+            item.ReservationId = row.ReservationId;
+            item.EquipmentId = row.EquipmentId;
+            item.ItemCode = row.ItemCode;
+            item.ItemName = row.ItemName;
+            item.CategoryName = row.CategoryName;
+            item.StartLocal = ManilaClock.ToLocal(row.ReservationStart);
+            item.EndLocal = ManilaClock.ToLocal(row.ReservationEnd);
+            item.RequestedAtLocal = ManilaClock.ToLocal(row.RequestedAt);
+            item.Status = row.Status;
+            item.DisplayStatus = ReservationDisplayStatus.For(row.Status, row.ReservationEnd, row.ReleasedAt, row.ReturnedAt, nowUtc);
+            item.CanCancel = CanCancel(row.Status, row.HasRelease);
+            return item;
+        }
+
+        /// <summary>D4: Pending, or Approved while the item has not been released.</summary>
+        private static bool CanCancel(string status, bool hasRelease)
+        {
+            return status == DomainValues.ReservationStatuses.Pending ||
+                (status == DomainValues.ReservationStatuses.Approved && !hasRelease);
+        }
+
+        private static DateTime? ToLocal(DateTime? utc)
+        {
+            return utc.HasValue ? ManilaClock.ToLocal(utc.Value) : (DateTime?)null;
+        }
+
         private BorrowerProfileSummary FindProfile(string userId)
         {
             if (string.IsNullOrEmpty(userId))
@@ -165,6 +368,33 @@ namespace ASI.Basecode.Services.Services
                     IsActive = profile.User.IsActive
                 })
                 .FirstOrDefault();
+        }
+
+        private sealed class ReservationRow
+        {
+            public long ReservationId { get; set; }
+            public long EquipmentId { get; set; }
+            public string ItemCode { get; set; }
+            public string ItemName { get; set; }
+            public string CategoryName { get; set; }
+            public string Brand { get; set; }
+            public string Model { get; set; }
+            public string Location { get; set; }
+            public string ImageUrl { get; set; }
+            public DateTime ReservationStart { get; set; }
+            public DateTime ReservationEnd { get; set; }
+            public DateTime RequestedAt { get; set; }
+            public string Status { get; set; }
+            public string Purpose { get; set; }
+            public string RejectionReason { get; set; }
+            public string ReviewerFirstName { get; set; }
+            public string ReviewerLastName { get; set; }
+            public DateTime? ReviewedAt { get; set; }
+            public DateTime? CancelledAt { get; set; }
+            public bool HasRelease { get; set; }
+            public DateTime? ReleasedAt { get; set; }
+            public DateTime? ReturnedAt { get; set; }
+            public string ReturnedCondition { get; set; }
         }
 
         private sealed class BorrowerProfileSummary
