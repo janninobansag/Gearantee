@@ -29,14 +29,4 @@ namespace ASI.Basecode.Services.ServiceModels.Reservations
         /// <summary>Item summary and booked times for display only; never read from the form.</summary>
         public CatalogItemDetailsViewModel Item { get; set; }
     }
-
-    public class ReservationSubmitResult
-    {
-        public bool Succeeded { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public long? ReservationId { get; set; }
-
-        public static ReservationSubmitResult Fail(string message) =>
-            new ReservationSubmitResult { Message = message };
-    }
 }

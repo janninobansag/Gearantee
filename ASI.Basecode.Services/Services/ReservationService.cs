@@ -66,11 +66,11 @@ namespace ASI.Basecode.Services.Services
             return null;
         }
 
-        public ReservationSubmitResult SubmitReservation(ReservationCreateViewModel model, string userId)
+        public ReservationResult SubmitReservation(ReservationCreateViewModel model, string userId)
         {
             if (model == null)
             {
-                return ReservationSubmitResult.Fail("The reservation form is incomplete. Reload and try again.");
+                return ReservationResult.Fail("The reservation form is incomplete. Reload and try again.");
             }
 
             var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
@@ -79,7 +79,7 @@ namespace ASI.Basecode.Services.Services
             var eligibilityError = EligibilityError(profile);
             if (eligibilityError != null)
             {
-                return ReservationSubmitResult.Fail(eligibilityError);
+                return ReservationResult.Fail(eligibilityError);
             }
 
             var itemIsReservable = _equipmentItemRepository.GetEquipmentItems()
@@ -88,24 +88,24 @@ namespace ASI.Basecode.Services.Services
                 .Any(item => item.EquipmentId == model.EquipmentId);
             if (!itemIsReservable)
             {
-                return ReservationSubmitResult.Fail("This item can't be reserved right now. It may be under maintenance, unavailable, or archived.");
+                return ReservationResult.Fail("This item can't be reserved right now. It may be under maintenance, unavailable, or archived.");
             }
 
             var windowError = ReservationAvailability.ValidateWindow(model.ReservationStart, model.ReservationEnd, nowUtc);
             if (windowError != null)
             {
-                return ReservationSubmitResult.Fail(windowError);
+                return ReservationResult.Fail(windowError);
             }
 
             var purpose = model.Purpose?.Trim();
             if (string.IsNullOrEmpty(purpose))
             {
-                return ReservationSubmitResult.Fail("Tell the custodian what the equipment is for.");
+                return ReservationResult.Fail("Tell the custodian what the equipment is for.");
             }
 
             if (purpose.Length > PurposeMaxLength)
             {
-                return ReservationSubmitResult.Fail($"The purpose must be {PurposeMaxLength} characters or fewer.");
+                return ReservationResult.Fail($"The purpose must be {PurposeMaxLength} characters or fewer.");
             }
 
             var startUtc = ManilaClock.ToUtc(model.ReservationStart.Value);
@@ -116,7 +116,7 @@ namespace ASI.Basecode.Services.Services
                 .Any(ReservationAvailability.Blocks(startUtc, endUtc, nowUtc));
             if (isBooked)
             {
-                return ReservationSubmitResult.Fail("This item is already booked or still on loan during that time. Pick a time outside the booked times.");
+                return ReservationResult.Fail("This item is already booked or still on loan during that time. Pick a time outside the booked times.");
             }
 
             var profileId = profile.BorrowerProfileId;
@@ -133,7 +133,7 @@ namespace ASI.Basecode.Services.Services
                     reservation.ReservationEnd > startUtc);
             if (hasDuplicate)
             {
-                return ReservationSubmitResult.Fail("You already have a pending request for this item that overlaps this time.");
+                return ReservationResult.Fail("You already have a pending request for this item that overlaps this time.");
             }
 
             var newReservation = new Reservation
@@ -151,7 +151,7 @@ namespace ASI.Basecode.Services.Services
 
             _reservationRepository.AddReservation(newReservation);
 
-            return new ReservationSubmitResult
+            return new ReservationResult
             {
                 Succeeded = true,
                 Message = "Reservation request submitted. A custodian will review it.",
@@ -255,6 +255,91 @@ namespace ASI.Basecode.Services.Services
             return details;
         }
 
+        public ReservationResult CancelReservation(long reservationId, string userId)
+        {
+            var profile = FindProfile(userId);
+            if (profile == null)
+            {
+                return ReservationResult.Missing();
+            }
+
+            var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+            ExpireStalePending(profile.BorrowerProfileId, nowUtc);
+
+            var current = _reservationRepository.GetReservations()
+                .AsNoTracking()
+                .Where(reservation =>
+                    reservation.ReservationId == reservationId &&
+                    reservation.BorrowerProfileId == profile.BorrowerProfileId)
+                .Select(reservation => new
+                {
+                    reservation.Status,
+                    HasRelease = reservation.ReleaseRecord != null,
+                    IsReturned = reservation.ReleaseRecord != null && reservation.ReleaseRecord.ReturnRecord != null
+                })
+                .FirstOrDefault();
+            if (current == null)
+            {
+                return ReservationResult.Missing();
+            }
+
+            var refusal = CancelRefusal(current.Status, current.HasRelease, current.IsReturned);
+            if (refusal != null)
+            {
+                return ReservationResult.Fail(refusal);
+            }
+
+            // D4, checked again inside the UPDATE itself so a custodian releasing the item
+            // at the same moment can't leave a cancelled reservation with a release record.
+            var cancelled = _reservationRepository.GetReservations()
+                .Where(reservation =>
+                    reservation.ReservationId == reservationId &&
+                    reservation.BorrowerProfileId == profile.BorrowerProfileId &&
+                    ((reservation.Status == DomainValues.ReservationStatuses.Pending &&
+                        reservation.ReservationStart > nowUtc) ||
+                     (reservation.Status == DomainValues.ReservationStatuses.Approved &&
+                        reservation.ReleaseRecord == null)))
+                .ExecuteUpdate(setters => setters
+                    .SetProperty(reservation => reservation.Status, DomainValues.ReservationStatuses.Cancelled)
+                    .SetProperty(reservation => reservation.CancelledAt, nowUtc)
+                    .SetProperty(reservation => reservation.UpdatedAt, nowUtc));
+            if (cancelled == 0)
+            {
+                return ReservationResult.Fail("This reservation changed while you were cancelling it. Reload the page to see its current status.");
+            }
+
+            return new ReservationResult
+            {
+                Succeeded = true,
+                Message = "Reservation cancelled.",
+                ReservationId = reservationId
+            };
+        }
+
+        /// <summary>Why a reservation can't be cancelled, or null when it can (D4).</summary>
+        private static string CancelRefusal(string status, bool hasRelease, bool isReturned)
+        {
+            if (isReturned)
+            {
+                return "This reservation is complete. The item has already been returned.";
+            }
+
+            if (hasRelease)
+            {
+                return "You've already picked up this item, so the reservation can't be cancelled. Return it to the custodian instead.";
+            }
+
+            return status switch
+            {
+                DomainValues.ReservationStatuses.Pending => null,
+                DomainValues.ReservationStatuses.Approved => null,
+                DomainValues.ReservationStatuses.Cancelled => "This reservation is already cancelled.",
+                DomainValues.ReservationStatuses.Rejected => "This request was rejected, so there's nothing to cancel.",
+                DomainValues.ReservationStatuses.Expired => "This request expired before it was reviewed, so there's nothing to cancel.",
+                _ => "This reservation can't be cancelled."
+            };
+        }
+
         /// <summary>
         /// D2: a Pending request whose start has passed was never reviewed in time, so it
         /// becomes Expired. Written lazily whenever the borrower's reservations are read.
@@ -335,15 +420,8 @@ namespace ASI.Basecode.Services.Services
             item.RequestedAtLocal = ManilaClock.ToLocal(row.RequestedAt);
             item.Status = row.Status;
             item.DisplayStatus = ReservationDisplayStatus.For(row.Status, row.ReservationEnd, row.ReleasedAt, row.ReturnedAt, nowUtc);
-            item.CanCancel = CanCancel(row.Status, row.HasRelease);
+            item.CanCancel = CancelRefusal(row.Status, row.HasRelease, row.ReturnedAt.HasValue) == null;
             return item;
-        }
-
-        /// <summary>D4: Pending, or Approved while the item has not been released.</summary>
-        private static bool CanCancel(string status, bool hasRelease)
-        {
-            return status == DomainValues.ReservationStatuses.Pending ||
-                (status == DomainValues.ReservationStatuses.Approved && !hasRelease);
         }
 
         private static DateTime? ToLocal(DateTime? utc)

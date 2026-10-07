@@ -13,7 +13,7 @@ using System;
 namespace ASI.Basecode.WebApp.Controllers
 {
     /// <summary>
-    /// Borrower reservations: submit a request (WBS 35.00) and view status (WBS 36.00).
+    /// Borrower reservations: submit a request (WBS 35.00), view status (WBS 36.00), and cancel (WBS 37.00).
     /// </summary>
     [Authorize(Roles = DomainValues.Roles.Borrower)]
     [Authorize(Policy = DomainValues.Permissions.ReservationCreate)]
@@ -102,6 +102,18 @@ namespace ASI.Basecode.WebApp.Controllers
 
             TempData["SuccessMessage"] = result.Message;
             return RedirectToAction(nameof(Details), new { id = result.ReservationId });
+        }
+
+        // POST: /Reservation/Cancel/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Cancel(long id)
+        {
+            var result = _reservationService.CancelReservation(id, UserId);
+            if (result.NotFound) return NotFound();
+
+            TempData[result.Succeeded ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         private void SetCreatePageData()

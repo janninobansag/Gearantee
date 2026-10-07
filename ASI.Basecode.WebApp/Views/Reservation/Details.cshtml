@@ -58,6 +58,15 @@
             <div><dt class="text-xs text-gray-500">End</dt><dd class="mt-1 font-medium text-gray-700">@When(Model.EndLocal)</dd></div>
             <div class="sm:col-span-2"><dt class="text-xs text-gray-500">Purpose</dt><dd class="mt-1 whitespace-pre-line font-medium text-gray-700">@Model.Purpose</dd></div>
         </dl>
+
+        @if (Model.CanCancel)
+        {
+            <form asp-action="Cancel" asp-route-id="@Model.ReservationId" method="post" class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-5"
+                  onsubmit="return confirm('Cancel @Model.ReservationCode? This can\'t be undone.');">
+                <p class="text-xs text-gray-500">@(Model.Status == DomainValues.ReservationStatuses.Approved ? "Cancelling frees the item for other borrowers." : "You can cancel until the request is picked up.")</p>
+                <button type="submit" class="border border-ink bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-ink hover:text-white">Cancel reservation</button>
+            </form>
+        }
     </section>
 
     <aside class="min-w-0 space-y-6">
