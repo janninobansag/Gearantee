@@ -1,5 +1,6 @@
 using ASI.Basecode.Data;
 using ASI.Basecode.Data.Interfaces;
+using ASI.Basecode.Data.Repositories;
 using ASI.Basecode.Services.Interfaces;
 using ASI.Basecode.Services.Services;
 using ASI.Basecode.WebApp.Services;
@@ -35,6 +36,14 @@ namespace ASI.Basecode.WebApp
             _services.AddScoped<PasswordResetOtpService>();
             _services.AddScoped<IDashboardService, DashboardService>();
             _services.AddScoped<IUserAdministrationService, UserAdministrationService>();
+
+            // Repositories
+            _services.AddScoped<IEquipmentItemRepository, EquipmentItemRepository>();
+            _services.AddScoped<IBorrowerProfileRepository, BorrowerProfileRepository>();
+            _services.AddScoped<IReservationRepository, ReservationRepository>();
+
+            // Services
+            _services.AddScoped<ICatalogService, CatalogService>();
         }
     }
 }

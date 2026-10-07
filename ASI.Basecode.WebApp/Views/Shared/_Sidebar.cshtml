@@ -54,7 +54,7 @@
 
         @if (isBorrower && User.HasClaim("permission", DomainValues.Permissions.EquipmentBrowse))
         {
-            <span class="nav-item nav-item-disabled">@await Html.PartialAsync("Icons/_Icon", "equipment")<span class="flex-1">Equipment catalog</span><span class="soon-tag">Soon</span></span>
+            <a asp-controller="Catalog" asp-action="Index" class="nav-item @(currentController == "Catalog" ? "nav-item-active" : "")" aria-current="@(currentController == "Catalog" ? "page" : null)">@await Html.PartialAsync("Icons/_Icon", "equipment")<span>Equipment catalog</span></a>
         }
         @if (isBorrower && User.HasClaim("permission", DomainValues.Permissions.ReservationCreate))
         {
