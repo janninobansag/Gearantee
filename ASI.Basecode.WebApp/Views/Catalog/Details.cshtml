@@ -3,6 +3,15 @@
 @{
     string OrDash(string value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
     var statusLabel = Model.AvailabilityStatus == DomainValues.EquipmentStatuses.Borrowed ? "Borrowed" : "Available";
+    var successMessage = ViewData["SuccessMessage"] as string;
+    var fromValue = (ViewData["From"] as DateTime?)?.ToString("yyyy-MM-ddTHH:mm");
+    var toValue = (ViewData["To"] as DateTime?)?.ToString("yyyy-MM-ddTHH:mm");
+    var canReserve = User.HasClaim("permission", DomainValues.Permissions.ReservationCreate);
+}
+
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <div class="mb-5 border-l-4 border-primary bg-white px-4 py-3 text-sm" role="status">@successMessage</div>
 }
 
 <a asp-action="Index" class="mb-6 inline-flex text-sm font-semibold text-primary-strong underline underline-offset-4">← Back to catalog</a>
@@ -40,7 +49,10 @@
                 <div><dt class="text-xs text-gray-500">Location</dt><dd class="mt-1 font-medium text-gray-700">@Model.Location</dd></div>
             </dl>
             <div class="mt-6 flex flex-wrap items-center gap-3 border-t border-gray-200 pt-5">
-                <span class="inline-flex items-center gap-2 text-sm text-gray-500">Reserve this item <span class="soon-tag">Soon</span></span>
+                @if (canReserve)
+                {
+                    <a asp-controller="Reservation" asp-action="Create" asp-route-equipmentId="@Model.EquipmentId" asp-route-from="@fromValue" asp-route-to="@toValue" class="btn-primary">Reserve this item</a>
+                }
             </div>
         </div>
     </section>

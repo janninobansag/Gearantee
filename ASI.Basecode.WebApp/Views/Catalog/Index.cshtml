@@ -98,7 +98,7 @@
                             <div class="col-span-2"><dt class="text-gray-500">Location</dt><dd class="mt-1 truncate font-medium text-gray-700">@item.Location</dd></div>
                         </dl>
                         <div class="mt-auto pt-4">
-                            <a asp-action="Details" asp-route-id="@item.EquipmentId" class="text-sm font-semibold text-primary-strong underline underline-offset-4">View details &amp; schedule</a>
+                            <a asp-action="Details" asp-route-id="@item.EquipmentId" asp-route-from="@(windowApplied ? fromValue : null)" asp-route-to="@(windowApplied ? toValue : null)" class="text-sm font-semibold text-primary-strong underline underline-offset-4">View details &amp; schedule</a>
                         </div>
                     </div>
                 </article>

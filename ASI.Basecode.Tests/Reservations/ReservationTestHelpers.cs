@@ -17,6 +17,16 @@ namespace ASI.Basecode.Tests.Reservations
                 new FixedTimeProvider(nowUtc));
         }
 
+        public static ReservationService ReservationsFor(SqliteDashboardDbContext db, DateTime nowUtc)
+        {
+            var unitOfWork = new UnitOfWork(db);
+            return new ReservationService(
+                new ReservationRepository(unitOfWork),
+                new EquipmentItemRepository(unitOfWork),
+                new BorrowerProfileRepository(unitOfWork),
+                new FixedTimeProvider(nowUtc));
+        }
+
         public static DateTime Utc(int year, int month, int day, int hour, int minute = 0) =>
             new(year, month, day, hour, minute, 0, DateTimeKind.Utc);
 

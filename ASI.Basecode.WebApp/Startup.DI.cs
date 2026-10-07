@@ -44,6 +44,7 @@ namespace ASI.Basecode.WebApp
 
             // Services
             _services.AddScoped<ICatalogService, CatalogService>();
+            _services.AddScoped<IReservationService, ReservationService>();
         }
     }
 }

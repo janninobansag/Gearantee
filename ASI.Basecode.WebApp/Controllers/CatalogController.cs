@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
@@ -40,14 +41,17 @@ namespace ASI.Basecode.WebApp.Controllers
             return View(model);
         }
 
-        // GET: /Catalog/Details/5
+        // GET: /Catalog/Details/5?from=...&to=...
         [HttpGet]
-        public IActionResult Details(long id)
+        public IActionResult Details(long id, DateTime? from, DateTime? to)
         {
             var item = _catalogService.RetrieveCatalogItem(id);
             if (item == null) return NotFound();
 
             SetPageData(item.ItemName);
+            ViewData["From"] = from;
+            ViewData["To"] = to;
+            ViewData["SuccessMessage"] = TempData["SuccessMessage"];
             return View(item);
         }
 

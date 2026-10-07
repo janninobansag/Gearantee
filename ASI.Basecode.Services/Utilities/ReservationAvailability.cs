@@ -54,6 +54,30 @@ namespace ASI.Basecode.Services.Utilities
                     item.ItemStatus == DomainValues.EquipmentStatuses.Borrowed);
         }
 
+        /// <summary>
+        /// Checks a requested window entered in Manila local time.
+        /// Returns null when the window is valid, otherwise a message for the borrower.
+        /// </summary>
+        public static string ValidateWindow(DateTime? startLocal, DateTime? endLocal, DateTime nowUtc)
+        {
+            if (!startLocal.HasValue || !endLocal.HasValue)
+            {
+                return "Enter both a start and an end date and time.";
+            }
+
+            if (startLocal.Value >= endLocal.Value)
+            {
+                return "The end date and time must be after the start.";
+            }
+
+            if (ManilaClock.ToUtc(startLocal.Value) <= nowUtc)
+            {
+                return "The start date and time must be in the future.";
+            }
+
+            return null;
+        }
+
         public static bool IsReservableStatus(string itemStatus)
         {
             return Array.IndexOf(ReservableStatuses, itemStatus) >= 0;

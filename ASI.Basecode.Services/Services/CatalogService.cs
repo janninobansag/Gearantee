@@ -67,7 +67,7 @@ namespace ASI.Basecode.Services.Services
 
             if (filter.From.HasValue || filter.To.HasValue)
             {
-                model.WindowError = ValidateWindow(filter.From, filter.To, nowUtc);
+                model.WindowError = ReservationAvailability.ValidateWindow(filter.From, filter.To, nowUtc);
                 if (model.WindowError == null)
                 {
                     var startUtc = ManilaClock.ToUtc(filter.From.Value);
@@ -167,27 +167,6 @@ namespace ASI.Basecode.Services.Services
                 .ToList();
 
             return item;
-        }
-
-        /// <summary>Returns null when the window is valid.</summary>
-        public static string ValidateWindow(DateTime? fromLocal, DateTime? toLocal, DateTime nowUtc)
-        {
-            if (!fromLocal.HasValue || !toLocal.HasValue)
-            {
-                return "Enter both a start and an end date and time to check availability.";
-            }
-
-            if (fromLocal.Value >= toLocal.Value)
-            {
-                return "The end date and time must be after the start.";
-            }
-
-            if (ManilaClock.ToUtc(fromLocal.Value) <= nowUtc)
-            {
-                return "The start date and time must be in the future.";
-            }
-
-            return null;
         }
 
         private IQueryable<Reservation> ActiveLoans()
