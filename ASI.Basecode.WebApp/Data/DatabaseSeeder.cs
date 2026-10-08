@@ -167,11 +167,8 @@ namespace ASI.Basecode.WebApp.Data
                 string.IsNullOrWhiteSpace(userCode))
             {
                 logger.LogWarning(
-                    "SeedAdmin values are not configured; using default administrator credentials for seeding. Change SeedAdmin config to override.");
-
-                email ??= "admin@gearantee.local";
-                userCode ??= "ADMIN-001";
-                password ??= "ChangeMe!123"; // replace via configuration/user-secrets after seeding
+                    "SeedAdmin values are not configured; skipping administrator seeding. Configure SeedAdmin:Email, SeedAdmin:Password, and SeedAdmin:UserCode explicitly.");
+                return;
             }
 
             var user = await userManager.FindByEmailAsync(email);
