@@ -15,6 +15,7 @@ namespace ASI.Basecode.Services.Interfaces
             string actorUserId,
             string tab = "equipment",
             string categorySearch = null,
-            string categoryStatus = null);
+            string categoryStatus = null,
+            int categoryPage = 1);
     }
 }

@@ -46,7 +46,7 @@ namespace ASI.Basecode.Services.ServiceModels.Category
         public string Description { get; set; }
 
         [Display(Name = "Active")]
-        public bool IsActive { get; set; } = true;
+        public bool IsActive { get; set; }
     }
 
     public class SetCategoryActiveModel
@@ -84,6 +84,8 @@ namespace ASI.Basecode.Services.ServiceModels.Category
         public string ActiveTab { get; set; } = "equipment";
         public string CategorySearch { get; set; }
         public string CategoryStatusFilter { get; set; }
+        public int CategoryPage { get; set; } = 1;
+        public int CategoryTotalPages { get; set; } = 1;
         public int CategoryTotalCount { get; set; }
         public IReadOnlyList<CategoryViewModel> Categories { get; set; } = new List<CategoryViewModel>();
     }

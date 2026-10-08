@@ -326,7 +326,8 @@ namespace ASI.Basecode.Services.Services
             string actorUserId,
             string tab = "equipment",
             string categorySearch = null,
-            string categoryStatus = null)
+            string categoryStatus = null,
+            int categoryPage = 1)
         {
             if (!await CanManageAsync(actorUserId))
             {
@@ -337,13 +338,15 @@ namespace ASI.Basecode.Services.Services
                 ? "categories"
                 : "equipment";
 
-            var categoryData = await GetCategoriesAsync(actorUserId, categorySearch, categoryStatus, 1);
+            var categoryData = await GetCategoriesAsync(actorUserId, categorySearch, categoryStatus, categoryPage);
 
             return new EquipmentManagementIndexViewModel
             {
                 ActiveTab = activeTab,
                 CategorySearch = categorySearch,
                 CategoryStatusFilter = categoryStatus,
+                CategoryPage = categoryData?.Page ?? 1,
+                CategoryTotalPages = categoryData?.TotalPages ?? 1,
                 CategoryTotalCount = categoryData?.TotalCount ?? 0,
                 Categories = categoryData?.Categories ?? new List<CategoryViewModel>()
             };

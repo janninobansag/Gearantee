@@ -316,6 +316,60 @@ namespace ASI.Basecode.Tests.Category
             Assert.True(reloaded2.IsActive);
         }
 
+        [Fact]
+        public async Task GetEquipmentManagementAsync_PaginatesCategories_With11And21Records()
+        {
+            using var database = new SqliteDb();
+            using var provider = CreateProvider(database);
+            await using var scope = provider.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<AsiBasecodeDBContext>();
+            var service = scope.ServiceProvider.GetRequiredService<ICategoryService>();
+
+            var admin = await SetupAuthorizedAdminAsync(scope);
+
+            for (var i = 1; i <= 11; i++)
+            {
+                db.EquipmentCategories.Add(new EquipmentCategory
+                {
+                    CategoryCode = $"CAT-{i:D2}",
+                    CategoryName = $"Category {i:D2}",
+                    IsActive = true
+                });
+            }
+            await db.SaveChangesAsync();
+
+            var page1 = await service.GetEquipmentManagementAsync(admin.Id, tab: "categories", categoryPage: 1);
+            Assert.Equal(11, page1.CategoryTotalCount);
+            Assert.Equal(1, page1.CategoryPage);
+            Assert.Equal(2, page1.CategoryTotalPages);
+            Assert.Equal(10, page1.Categories.Count);
+
+            var page2 = await service.GetEquipmentManagementAsync(admin.Id, tab: "categories", categoryPage: 2);
+            Assert.Equal(11, page2.CategoryTotalCount);
+            Assert.Equal(2, page2.CategoryPage);
+            Assert.Equal(2, page2.CategoryTotalPages);
+            Assert.Single(page2.Categories);
+            Assert.Equal("Category 11", page2.Categories[0].CategoryName);
+
+            for (var i = 12; i <= 21; i++)
+            {
+                db.EquipmentCategories.Add(new EquipmentCategory
+                {
+                    CategoryCode = $"CAT-{i:D2}",
+                    CategoryName = $"Category {i:D2}",
+                    IsActive = true
+                });
+            }
+            await db.SaveChangesAsync();
+
+            var page3 = await service.GetEquipmentManagementAsync(admin.Id, tab: "categories", categoryPage: 3);
+            Assert.Equal(21, page3.CategoryTotalCount);
+            Assert.Equal(3, page3.CategoryPage);
+            Assert.Equal(3, page3.CategoryTotalPages);
+            Assert.Single(page3.Categories);
+            Assert.Equal("Category 21", page3.Categories[0].CategoryName);
+        }
+
         private static async Task<ApplicationUser> SetupAuthorizedAdminAsync(AsyncServiceScope scope)
         {
             var db = scope.ServiceProvider.GetRequiredService<AsiBasecodeDBContext>();
