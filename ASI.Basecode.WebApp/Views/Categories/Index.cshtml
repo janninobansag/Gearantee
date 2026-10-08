@@ -1,7 +1,7 @@
 @model ASI.Basecode.Services.ServiceModels.Category.EquipmentManagementIndexViewModel
 @{
-    var successMessage = ViewData["SuccessMessage"] as string;
-    var errorMessage = ViewData["ErrorMessage"] as string;
+    var successMessage = (ViewData["SuccessMessage"] ?? TempData["SuccessMessage"]) as string;
+    var errorMessage = (ViewData["ErrorMessage"] ?? TempData["ErrorMessage"]) as string;
     var isCategoriesTab = string.Equals(Model.ActiveTab, "categories", StringComparison.OrdinalIgnoreCase);
     var hasCategoryFilters = !string.IsNullOrWhiteSpace(Model.CategorySearch) || !string.IsNullOrWhiteSpace(Model.CategoryStatusFilter);
 }
@@ -192,6 +192,20 @@
                 </tbody>
             </table>
         </div>
+
+        <nav class="mt-3 flex items-center justify-between text-xs text-gray-500" aria-label="Category pages">
+            <span>Page @Model.CategoryPage of @Model.CategoryTotalPages</span>
+            <div class="flex gap-2">
+                @if (Model.CategoryPage > 1)
+                {
+                    <a asp-action="Index" asp-route-tab="categories" asp-route-categorySearch="@Model.CategorySearch" asp-route-categoryStatus="@Model.CategoryStatusFilter" asp-route-categoryPage="@(Model.CategoryPage - 1)" class="border border-gray-200 bg-white px-3 py-2 text-gray-700 hover:border-gray-400">Previous</a>
+                }
+                @if (Model.CategoryPage < Model.CategoryTotalPages)
+                {
+                    <a asp-action="Index" asp-route-tab="categories" asp-route-categorySearch="@Model.CategorySearch" asp-route-categoryStatus="@Model.CategoryStatusFilter" asp-route-categoryPage="@(Model.CategoryPage + 1)" class="border border-gray-200 bg-white px-3 py-2 text-gray-700 hover:border-gray-400">Next</a>
+                }
+            </div>
+        </nav>
     </section>
 </div>
 
@@ -223,6 +237,7 @@
 
                 <div>
                     <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="hidden" name="IsActive" value="false" />
                         <input type="checkbox" name="IsActive" id="create-category-active" value="true" checked class="size-4 accent-primary-strong" />
                         <span class="text-sm font-medium text-gray-700">Active category</span>
                     </label>
@@ -268,6 +283,7 @@
 
                 <div>
                     <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="hidden" name="IsActive" value="false" />
                         <input type="checkbox" name="IsActive" id="edit-category-active" value="true" class="size-4 accent-primary-strong" />
                         <span class="text-sm font-medium text-gray-700">Active category</span>
                     </label>
@@ -296,7 +312,7 @@
             <input type="hidden" name="IsActive" id="status-category-is-active" />
 
             <p id="modal-status-message" class="text-sm text-gray-700 leading-6">
-                Are you sure you want to deactivate <strong id="status-category-name" class="font-semibold text-ink"></strong>?
+                <span id="modal-status-action-text">Are you sure you want to deactivate</span> <strong id="status-category-name" class="font-semibold text-ink"></strong><span id="modal-status-question-mark">?</span>
             </p>
             <p id="modal-status-hint" class="mt-2 text-xs text-gray-500 leading-5">
                 Existing equipment items and reservation history in this category will remain preserved, but new items cannot be registered under it while deactivated.
@@ -412,18 +428,21 @@
                     document.getElementById('status-category-name').textContent = catName;
 
                     const title = document.getElementById('modal-status-title');
-                    const message = document.getElementById('modal-status-message');
+                    const actionText = document.getElementById('modal-status-action-text');
+                    const nameNode = document.getElementById('status-category-name');
                     const hint = document.getElementById('modal-status-hint');
                     const confirmBtn = document.getElementById('btn-status-confirm');
 
                     if (isCurrentlyActive) {
                         title.textContent = 'Deactivate category';
-                        message.innerHTML = `Are you sure you want to deactivate <strong class="font-semibold text-ink">${catName}</strong>?`;
+                        actionText.textContent = 'Are you sure you want to deactivate';
+                        nameNode.textContent = catName;
                         hint.textContent = 'Existing equipment items and history will remain preserved, but new items cannot be registered under this category.';
                         confirmBtn.textContent = 'Deactivate category';
                     } else {
                         title.textContent = 'Activate category';
-                        message.innerHTML = `Are you sure you want to activate <strong class="font-semibold text-ink">${catName}</strong>?`;
+                        actionText.textContent = 'Are you sure you want to activate';
+                        nameNode.textContent = catName;
                         hint.textContent = 'This category will immediately become available again when cataloging new equipment items.';
                         confirmBtn.textContent = 'Activate category';
                     }
