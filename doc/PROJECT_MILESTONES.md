@@ -380,3 +380,4 @@ The first version is complete when borrowers can securely reserve one available 
 | 10/7/2026 | Started WBS 35.00: borrower reservation request form with eligibility, availability, and duplicate-request checks | Cataraja |
 | 10/7/2026 | Started WBS 36.00: My Reservations list with status tabs and a reservation detail page; stale pending requests are marked Expired when viewed | Cataraja |
 | 10/7/2026 | Started WBS 37.00: borrowers cancel their own pending or unreleased approved reservations, with an atomic status check | Cataraja |
+| 10/8/2026 | WBS 37.00: replaced the browser confirm with a reusable confirmation modal (`Components/_ConfirmDialog` + `confirm-dialog.js`) before cancelling a reservation | Cataraja |

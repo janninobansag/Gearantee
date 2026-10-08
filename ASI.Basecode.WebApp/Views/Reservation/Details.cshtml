@@ -1,4 +1,5 @@
 @model ASI.Basecode.Services.ServiceModels.Reservations.ReservationDetailsViewModel
+@using ASI.Basecode.WebApp.Models
 @{
     var successMessage = ViewData["SuccessMessage"] as string;
     var errorMessage = ViewData["ErrorMessage"] as string;
@@ -61,11 +62,23 @@
 
         @if (Model.CanCancel)
         {
-            <form asp-action="Cancel" asp-route-id="@Model.ReservationId" method="post" class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-5"
-                  onsubmit="return confirm('Cancel @Model.ReservationCode? This can\'t be undone.');">
+            <form asp-action="Cancel" asp-route-id="@Model.ReservationId" method="post" data-confirm-dialog="cancel-reservation-dialog"
+                  class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-5">
                 <p class="text-xs text-gray-500">@(Model.Status == DomainValues.ReservationStatuses.Approved ? "Cancelling frees the item for other borrowers." : "You can cancel until the request is picked up.")</p>
                 <button type="submit" class="border border-ink bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-ink hover:text-white">Cancel reservation</button>
             </form>
+
+            <partial name="Components/_ConfirmDialog" model="@(new ConfirmDialogModel
+            {
+                Id = "cancel-reservation-dialog",
+                Title = $"Cancel {Model.ReservationCode}?",
+                Message = Model.Status == DomainValues.ReservationStatuses.Approved
+                    ? "Your approved booking will be released and other borrowers can reserve this time. This can't be undone."
+                    : "Your request will be withdrawn before a custodian reviews it. This can't be undone.",
+                Detail = $"{Model.ItemName} · {When(Model.StartLocal)} → {When(Model.EndLocal)}",
+                ConfirmText = "Yes, cancel it",
+                CancelText = "Keep reservation"
+            })" />
         }
     </section>
 
@@ -104,3 +117,7 @@
         </section>
     </aside>
 </div>
+
+@section Scripts {
+    <script src="~/js/confirm-dialog.js" asp-append-version="true"></script>
+}
