@@ -121,21 +121,6 @@ namespace ASI.Basecode.Services.Services
 
             var profileId = profile.BorrowerProfileId;
 
-            // D3: one open request per borrower, item, and window. A Pending request whose
-            // start has passed is Expired (D2), so it no longer counts.
-            var hasDuplicate = _reservationRepository.GetReservations()
-                .Any(reservation =>
-                    reservation.BorrowerProfileId == profileId &&
-                    reservation.EquipmentId == model.EquipmentId &&
-                    reservation.Status == DomainValues.ReservationStatuses.Pending &&
-                    reservation.ReservationStart > nowUtc &&
-                    reservation.ReservationStart < endUtc &&
-                    reservation.ReservationEnd > startUtc);
-            if (hasDuplicate)
-            {
-                return ReservationResult.Fail("You already have a pending request for this item that overlaps this time.");
-            }
-
             var newReservation = new Reservation
             {
                 BorrowerProfileId = profileId,
@@ -149,7 +134,28 @@ namespace ASI.Basecode.Services.Services
                 UpdatedAt = nowUtc
             };
 
-            _reservationRepository.AddReservation(newReservation);
+            // D3: one open request per borrower, item, and window. A Pending request whose
+            // start has passed is Expired (D2), so it no longer counts. The check and the
+            // insert run under one lock per borrower and item, so two tabs submitting at the
+            // same moment can't both pass the check (RES-01).
+            using (var transaction = _reservationRepository.BeginSubmissionLock(profileId, model.EquipmentId))
+            {
+                var hasDuplicate = _reservationRepository.GetReservations()
+                    .Any(reservation =>
+                        reservation.BorrowerProfileId == profileId &&
+                        reservation.EquipmentId == model.EquipmentId &&
+                        reservation.Status == DomainValues.ReservationStatuses.Pending &&
+                        reservation.ReservationStart > nowUtc &&
+                        reservation.ReservationStart < endUtc &&
+                        reservation.ReservationEnd > startUtc);
+                if (hasDuplicate)
+                {
+                    return ReservationResult.Fail("You already have a pending request for this item that overlaps this time.");
+                }
+
+                _reservationRepository.AddReservation(newReservation);
+                transaction.Commit();
+            }
 
             return new ReservationResult
             {
@@ -346,19 +352,17 @@ namespace ASI.Basecode.Services.Services
         /// </summary>
         private void ExpireStalePending(long borrowerProfileId, DateTime nowUtc)
         {
-            var stale = _reservationRepository.GetReservations()
+            // One conditional UPDATE instead of saving loaded rows: the Pending check runs at
+            // write time, so a request a custodian approved after we loaded the page is never
+            // overwritten with Expired (RES-02), and only Status and UpdatedAt change.
+            _reservationRepository.GetReservations()
                 .Where(reservation =>
                     reservation.BorrowerProfileId == borrowerProfileId &&
                     reservation.Status == DomainValues.ReservationStatuses.Pending &&
                     reservation.ReservationStart <= nowUtc)
-                .ToList();
-
-            foreach (var reservation in stale)
-            {
-                reservation.Status = DomainValues.ReservationStatuses.Expired;
-                reservation.UpdatedAt = nowUtc;
-                _reservationRepository.UpdateReservation(reservation);
-            }
+                .ExecuteUpdate(setters => setters
+                    .SetProperty(reservation => reservation.Status, DomainValues.ReservationStatuses.Expired)
+                    .SetProperty(reservation => reservation.UpdatedAt, nowUtc));
         }
 
         private static string NormalizeStatus(string status)
