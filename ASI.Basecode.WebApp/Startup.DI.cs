@@ -36,6 +36,7 @@ namespace ASI.Basecode.WebApp
             _services.AddScoped<PasswordResetOtpService>();
             _services.AddScoped<IDashboardService, DashboardService>();
             _services.AddScoped<IUserAdministrationService, UserAdministrationService>();
+            _services.AddScoped<ICategoryService, CategoryService>();
 
             // Repositories
             _services.AddScoped<IEquipmentItemRepository, EquipmentItemRepository>();

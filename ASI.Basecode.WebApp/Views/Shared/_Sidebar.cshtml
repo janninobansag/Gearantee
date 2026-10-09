@@ -76,7 +76,9 @@
         }
         @if (isAdmin && User.HasClaim("permission", DomainValues.Permissions.EquipmentManage))
         {
-            <span class="nav-item nav-item-disabled">@await Html.PartialAsync("Icons/_Icon", "equipment")<span class="flex-1">Equipment &amp; categories</span><span class="soon-tag">Soon</span></span>
+            <a asp-controller="Categories" asp-action="Index" class="nav-item @(currentController == "Categories" ? "nav-item-active" : "")" aria-current="@(currentController == "Categories" ? "page" : null)">
+                @await Html.PartialAsync("Icons/_Icon", "equipment")<span>Equipments &amp; categories</span>
+            </a>
         }
         @if (isAdmin && User.HasClaim("permission", DomainValues.Permissions.BorrowerManage))
         {
