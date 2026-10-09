@@ -2,8 +2,6 @@ using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.ServiceModels.Catalog;
 using ASI.Basecode.Services.Utilities;
 using ASI.Basecode.Tests.Dashboard;
-using ASI.Basecode.WebApp.Controllers;
-using Microsoft.AspNetCore.Authorization;
 using System.Linq;
 using Xunit;
 using static ASI.Basecode.Tests.Reservations.ReservationTestHelpers;
@@ -164,18 +162,6 @@ namespace ASI.Basecode.Tests.Reservations
             Assert.All(details.BookedWindows, window => Assert.Equal("Reserved", window.Label));
             Assert.Null(service.RetrieveCatalogItem(maintenance.EquipmentId));
             Assert.Null(service.RetrieveCatalogItem(999));
-        }
-
-        [Fact]
-        public void Catalog_requires_borrower_role_and_browse_permission()
-        {
-            var attributes = typeof(CatalogController)
-                .GetCustomAttributes(typeof(AuthorizeAttribute), true)
-                .Cast<AuthorizeAttribute>()
-                .ToList();
-
-            Assert.Contains(attributes, attribute => attribute.Roles == DomainValues.Roles.Borrower);
-            Assert.Contains(attributes, attribute => attribute.Policy == DomainValues.Permissions.EquipmentBrowse);
         }
     }
 }

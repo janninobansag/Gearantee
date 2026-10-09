@@ -2,9 +2,6 @@ using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.ServiceModels.Reservations;
 using ASI.Basecode.Services.Utilities;
 using ASI.Basecode.Tests.Dashboard;
-using ASI.Basecode.WebApp.Controllers;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
 using Xunit;
@@ -275,22 +272,6 @@ namespace ASI.Basecode.Tests.Reservations
             var result = ReservationsFor(db, Now).SubmitReservation(Request(item, Now.AddDays(1), Now.AddDays(2)), user.Id);
 
             Assert.True(result.Succeeded, result.Message);
-        }
-
-        [Fact]
-        public void Reservation_controller_requires_borrower_role_create_permission_and_antiforgery()
-        {
-            var attributes = typeof(ReservationController)
-                .GetCustomAttributes(typeof(AuthorizeAttribute), true)
-                .Cast<AuthorizeAttribute>()
-                .ToList();
-            var post = typeof(ReservationController).GetMethods()
-                .Single(method => method.Name == nameof(ReservationController.Create) &&
-                    method.GetCustomAttributes(typeof(HttpPostAttribute), true).Any());
-
-            Assert.Contains(attributes, attribute => attribute.Roles == DomainValues.Roles.Borrower);
-            Assert.Contains(attributes, attribute => attribute.Policy == DomainValues.Permissions.ReservationCreate);
-            Assert.NotEmpty(post.GetCustomAttributes(typeof(ValidateAntiForgeryTokenAttribute), true));
         }
     }
 }

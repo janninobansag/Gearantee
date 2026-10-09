@@ -8,7 +8,7 @@ namespace ASI.Basecode.Tests.Reservations
 {
     internal static class ReservationTestHelpers
     {
-        public static CatalogService Catalog(SqliteDashboardDbContext db, DateTime nowUtc)
+        public static CatalogService Catalog(AsiBasecodeDBContext db, DateTime nowUtc)
         {
             var unitOfWork = new UnitOfWork(db);
             return new CatalogService(
@@ -17,7 +17,7 @@ namespace ASI.Basecode.Tests.Reservations
                 new FixedTimeProvider(nowUtc));
         }
 
-        public static ReservationService ReservationsFor(SqliteDashboardDbContext db, DateTime nowUtc)
+        public static ReservationService ReservationsFor(AsiBasecodeDBContext db, DateTime nowUtc)
         {
             var unitOfWork = new UnitOfWork(db);
             return new ReservationService(
