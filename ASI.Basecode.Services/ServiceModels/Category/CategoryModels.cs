@@ -82,6 +82,8 @@ namespace ASI.Basecode.Services.ServiceModels.Category
     public class EquipmentManagementIndexViewModel
     {
         public string ActiveTab { get; set; } = "equipment";
+        public ASI.Basecode.Services.ServiceModels.EquipmentItem.EquipmentItemIndexViewModel Equipment { get; set; } =
+            new ASI.Basecode.Services.ServiceModels.EquipmentItem.EquipmentItemIndexViewModel();
         public string CategorySearch { get; set; }
         public string CategoryStatusFilter { get; set; }
         public int CategoryPage { get; set; } = 1;

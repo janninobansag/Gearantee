@@ -3,6 +3,8 @@ using ASI.Basecode.Data.Models;
 using Basecode.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using System;
+using System.Data;
 using System.Linq;
 
 namespace ASI.Basecode.Data.Repositories
@@ -30,26 +32,40 @@ namespace ASI.Basecode.Data.Repositories
             UnitOfWork.SaveChanges();
         }
 
-        public IDbContextTransaction BeginSubmissionLock(long borrowerProfileId, long equipmentId)
+        public void AcquireSubmissionLock(long borrowerProfileId, long equipmentId)
         {
-            var transaction = Context.Database.BeginTransaction();
+            var transaction = Context.Database.CurrentTransaction;
+            if (transaction == null ||
+                transaction.GetDbTransaction().IsolationLevel != IsolationLevel.Serializable)
+            {
+                throw new InvalidOperationException(
+                    "The reservation submission lock requires an active SERIALIZABLE transaction.");
+            }
+
             if (Context.Database.IsSqlServer())
             {
-                // Same app-lock approach as UserAdministrationService. The lock is released
-                // when the transaction ends, after the new row is committed, so the next
-                // request for this borrower and item sees it in its duplicate check.
+                // Prevent serializable range-lock deadlocks across this borrower's different
+                // items. The equipment row lock is already held, so the borrower gate can't
+                // form a cycle with inventory updates. Retain a narrower lock for the duplicate
+                // check; both locks release when the transaction ends.
+                var borrowerResource = $"Gearantee.ReservationSubmitBorrower:{borrowerProfileId}";
+                AcquireApplicationLock(borrowerResource);
+
                 var resource = $"Gearantee.ReservationSubmit:{borrowerProfileId}:{equipmentId}";
-                Context.Database.ExecuteSqlInterpolated(
-                    $@"DECLARE @lockResult int;
+                AcquireApplicationLock(resource);
+            }
+        }
+
+        private void AcquireApplicationLock(string resource)
+        {
+            Context.Database.ExecuteSqlInterpolated(
+                $@"DECLARE @lockResult int;
 EXEC @lockResult = sys.sp_getapplock
     @Resource = {resource},
     @LockMode = 'Exclusive',
     @LockOwner = 'Transaction',
     @LockTimeout = {SubmissionLockTimeoutMs};
 IF @lockResult < 0 THROW 51000, 'Could not acquire the reservation submission lock.', 1;");
-            }
-
-            return transaction;
         }
     }
 }
