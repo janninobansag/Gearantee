@@ -1,6 +1,7 @@
 using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
 using ASI.Basecode.Services.ServiceModels.Category;
+using ASI.Basecode.Services.ServiceModels.EquipmentItem;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -17,10 +18,14 @@ namespace ASI.Basecode.WebApp.Controllers
     public class CategoriesController : Controller
     {
         private readonly ICategoryService _categoryService;
+        private readonly IEquipmentItemService _equipmentItemService;
 
-        public CategoriesController(ICategoryService categoryService)
+        public CategoriesController(
+            ICategoryService categoryService,
+            IEquipmentItemService equipmentItemService)
         {
             _categoryService = categoryService;
+            _equipmentItemService = equipmentItemService;
         }
 
         private string UserId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -30,7 +35,11 @@ namespace ASI.Basecode.WebApp.Controllers
             string tab = "equipment",
             string categorySearch = null,
             string categoryStatus = null,
-            int categoryPage = 1)
+            int categoryPage = 1,
+            string equipmentSearch = null,
+            string equipmentStatus = null,
+            long? equipmentCategoryId = null,
+            int equipmentPage = 1)
         {
             if (!await _categoryService.CanManageAsync(UserId))
             {
@@ -49,6 +58,17 @@ namespace ASI.Basecode.WebApp.Controllers
                 return Forbid();
             }
 
+            model.Equipment = await _equipmentItemService.GetEquipmentItemsAsync(
+                UserId,
+                equipmentSearch,
+                equipmentStatus,
+                equipmentCategoryId,
+                equipmentPage);
+            if (model.Equipment == null)
+            {
+                return Forbid();
+            }
+
             ViewData["Title"] = "Equipments & categories";
             ViewData["Eyebrow"] = "Master data";
             ViewData["PageDate"] = DateTime.Now.ToString("MMM d, yyyy");
@@ -56,6 +76,177 @@ namespace ASI.Basecode.WebApp.Controllers
             ViewData["ErrorMessage"] = TempData["ErrorMessage"];
 
             return View(model);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CreateEquipment()
+        {
+            var model = await _equipmentItemService.GetCreateFormAsync(UserId);
+            if (model == null)
+            {
+                return Forbid();
+            }
+
+            ViewData["Title"] = "Register equipment item";
+            ViewData["Eyebrow"] = "Master data";
+            return View("CreateEquipment", model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateEquipment(EquipmentItemFormViewModel model)
+        {
+            if (!await _categoryService.CanManageAsync(UserId))
+            {
+                return Forbid();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                await PrepareEquipmentFormAsync(model, isEdit: false);
+                return View("CreateEquipment", model);
+            }
+
+            var result = await _equipmentItemService.CreateAsync(UserId, model);
+            if (result.Forbidden)
+            {
+                return Forbid();
+            }
+
+            if (!result.Succeeded)
+            {
+                ModelState.AddModelError(string.Empty, result.Message);
+                await PrepareEquipmentFormAsync(model, isEdit: false);
+                return View("CreateEquipment", model);
+            }
+
+            TempData["SuccessMessage"] = result.Message;
+            return RedirectToAction(nameof(Index), new { tab = "equipment" });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditEquipment(long id)
+        {
+            var model = await _equipmentItemService.GetEditFormAsync(UserId, id);
+            if (model == null)
+            {
+                if (!await _categoryService.CanManageAsync(UserId))
+                {
+                    return Forbid();
+                }
+
+                return NotFound();
+            }
+
+            ViewData["Title"] = "Edit equipment item";
+            ViewData["Eyebrow"] = "Master data";
+            return View("EditEquipment", model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditEquipment(EquipmentItemFormViewModel model)
+        {
+            if (!await _categoryService.CanManageAsync(UserId))
+            {
+                return Forbid();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                if (!await PrepareEquipmentFormAsync(model, isEdit: true))
+                {
+                    return NotFound();
+                }
+
+                return View("EditEquipment", model);
+            }
+
+            var result = await _equipmentItemService.UpdateAsync(UserId, model);
+            if (result.Forbidden)
+            {
+                return Forbid();
+            }
+
+            if (result.Missing)
+            {
+                return NotFound();
+            }
+
+            if (!result.Succeeded)
+            {
+                ModelState.AddModelError(string.Empty, result.Message);
+                if (!await PrepareEquipmentFormAsync(model, isEdit: true))
+                {
+                    return NotFound();
+                }
+
+                return View("EditEquipment", model);
+            }
+
+            TempData["SuccessMessage"] = result.Message;
+            return RedirectToAction(nameof(Index), new { tab = "equipment" });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetEquipmentArchived(
+            long id,
+            bool archived,
+            string equipmentSearch = null,
+            string equipmentStatus = null,
+            long? equipmentCategoryId = null,
+            int equipmentPage = 1)
+        {
+            if (!await _categoryService.CanManageAsync(UserId))
+            {
+                return Forbid();
+            }
+
+            var result = await _equipmentItemService.SetArchivedAsync(
+                UserId,
+                id,
+                archived);
+            if (result.Forbidden)
+            {
+                return Forbid();
+            }
+
+            if (result.Missing)
+            {
+                return NotFound();
+            }
+
+            TempData[result.Succeeded ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+            return RedirectToAction(nameof(Index), new
+            {
+                tab = "equipment",
+                equipmentSearch,
+                equipmentStatus,
+                equipmentCategoryId,
+                equipmentPage
+            });
+        }
+
+        private async Task<bool> PrepareEquipmentFormAsync(
+            EquipmentItemFormViewModel model,
+            bool isEdit)
+        {
+            ViewData["Title"] = isEdit ? "Edit equipment item" : "Register equipment item";
+            ViewData["Eyebrow"] = "Master data";
+
+            var options = isEdit
+                ? await _equipmentItemService.GetEditFormAsync(UserId, model.EquipmentId)
+                : await _equipmentItemService.GetCreateFormAsync(UserId);
+            if (options == null)
+            {
+                return false;
+            }
+
+            model.Categories = options.Categories;
+            model.IsLocked = options.IsLocked;
+            model.IsCategoryInactive = options.IsCategoryInactive;
+            return true;
         }
 
         [HttpGet]

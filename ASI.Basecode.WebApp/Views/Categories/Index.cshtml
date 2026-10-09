@@ -4,6 +4,8 @@
     var errorMessage = (ViewData["ErrorMessage"] ?? TempData["ErrorMessage"]) as string;
     var isCategoriesTab = string.Equals(Model.ActiveTab, "categories", StringComparison.OrdinalIgnoreCase);
     var hasCategoryFilters = !string.IsNullOrWhiteSpace(Model.CategorySearch) || !string.IsNullOrWhiteSpace(Model.CategoryStatusFilter);
+    var hasEquipmentFilters = !string.IsNullOrWhiteSpace(Model.Equipment.Search) ||
+        !string.IsNullOrWhiteSpace(Model.Equipment.StatusFilter) || Model.Equipment.CategoryId.HasValue;
 }
 
 @if (!string.IsNullOrWhiteSpace(successMessage))
@@ -57,32 +59,149 @@
     <!-- ================================================================= -->
     <section id="tab-panel-equipment" class="tab-panel space-y-4 @(isCategoriesTab ? "hidden" : "")" aria-labelledby="tab-btn-equipment">
         <!-- Equipment Header & Action Controls UI Frame -->
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex flex-1 items-center gap-2 max-w-md">
-                <input type="search" placeholder="Search equipment items..." class="input" disabled />
-                <button type="button" class="btn-primary opacity-60 cursor-not-allowed" disabled>Search</button>
-            </div>
-
-            <span class="inline-flex items-center gap-2 border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-500 cursor-default">
-                + Register equipment <span class="soon-tag">WBS 26.00</span>
-            </span>
+        <div class="flex flex-wrap items-end justify-between gap-3">
+            <form method="get" asp-action="Index" class="grid flex-1 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_190px_190px_auto]">
+                <input type="hidden" name="tab" value="equipment" />
+                <label class="sr-only" for="equipment-search">Search equipment items</label>
+                <input id="equipment-search" name="equipmentSearch" value="@Model.Equipment.Search" type="search" placeholder="Search code, name, serial, location..." class="input" />
+                <label class="sr-only" for="equipment-category-filter">Filter by category</label>
+                <select id="equipment-category-filter" name="equipmentCategoryId" class="input">
+                    <option value="">All categories</option>
+                    @foreach (var category in Model.Equipment.Categories)
+                    {
+                        <option value="@category.CategoryId" selected="@(Model.Equipment.CategoryId == category.CategoryId ? "selected" : null)">@category.CategoryCode - @category.CategoryName@(category.IsActive ? "" : " (Inactive)")</option>
+                    }
+                </select>
+                <label class="sr-only" for="equipment-status-filter">Filter by item status</label>
+                <select id="equipment-status-filter" name="equipmentStatus" class="input">
+                    <option value="" selected="@(string.IsNullOrWhiteSpace(Model.Equipment.StatusFilter) ? "selected" : null)">Active inventory</option>
+                    <option value="Available" selected="@(Model.Equipment.StatusFilter == "Available" ? "selected" : null)">Available</option>
+                    <option value="Borrowed" selected="@(Model.Equipment.StatusFilter == "Borrowed" ? "selected" : null)">Borrowed</option>
+                    <option value="UnderMaintenance" selected="@(Model.Equipment.StatusFilter == "UnderMaintenance" ? "selected" : null)">Under maintenance</option>
+                    <option value="Unavailable" selected="@(Model.Equipment.StatusFilter == "Unavailable" ? "selected" : null)">Unavailable</option>
+                    <option value="archived" selected="@(Model.Equipment.StatusFilter == "archived" ? "selected" : null)">Archived</option>
+                </select>
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="btn-primary">Search</button>
+                    @if (hasEquipmentFilters)
+                    {
+                        <a asp-action="Index" asp-route-tab="equipment" class="btn-secondary text-xs">Clear</a>
+                    }
+                </div>
+            </form>
+            <a asp-action="CreateEquipment" class="btn-primary min-h-10">+ Register equipment</a>
         </div>
 
-        <!-- Established UI Workspace Placeholder for Equipments -->
-        <div class="border border-dashed border-gray-300 bg-white p-12 text-center">
-            <div class="mx-auto size-12 flex items-center justify-center rounded-full bg-tint text-primary-strong mb-3">
-                @await Html.PartialAsync("Icons/_Icon", "equipment")
-            </div>
-            <h3 class="font-display text-base font-semibold text-ink">Equipments Workspace</h3>
-            <p class="mt-1 max-w-md mx-auto text-xs text-gray-500">
-                Equipment inventory records, condition status, and item registration will be managed here under WBS 25.00–28.00. Switch to the Categories tab to manage equipment categories.
-            </p>
-            <div class="mt-4">
-                <button type="button" onclick="switchTab('categories')" class="btn-secondary text-xs">
-                    Switch to Categories tab &rarr;
-                </button>
-            </div>
+        <div class="overflow-x-auto border border-gray-200 bg-white">
+            <table class="w-full min-w-[1050px] text-left text-sm">
+                <thead class="border-b border-gray-200 bg-gray-50 font-display text-[11px] uppercase tracking-[0.12em] text-gray-700">
+                    <tr>
+                        <th scope="col" class="px-4 py-3">Item</th>
+                        <th scope="col" class="px-4 py-3">Category</th>
+                        <th scope="col" class="px-4 py-3">Serial number</th>
+                        <th scope="col" class="px-4 py-3">Condition</th>
+                        <th scope="col" class="px-4 py-3">Status</th>
+                        <th scope="col" class="px-4 py-3">Storage location</th>
+                        <th scope="col" class="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @if (Model.Equipment.Items.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="7" class="px-4 py-12 text-center text-sm text-gray-500">
+                                @if (hasEquipmentFilters)
+                                {
+                                    <span>No equipment items match these filters.</span>
+                                }
+                                else if (Model.Equipment.Categories.Count == 0)
+                                {
+                                    <span>Create and activate an equipment category before registering equipment.</span>
+                                }
+                                else
+                                {
+                                    <span>No equipment items registered yet. Register the first item to begin tracking inventory.</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var item in Model.Equipment.Items)
+                    {
+                        var displayedStatus = item.IsArchived ? "Archived" : item.ItemStatus;
+                        if (displayedStatus == "UnderMaintenance") { displayedStatus = "Under maintenance"; }
+                        var displayedCondition = item.ConditionStatus;
+                        if (displayedCondition == "NeedsInspection") { displayedCondition = "Needs inspection"; }
+                        if (displayedCondition == "UnderRepair") { displayedCondition = "Under repair"; }
+                        var archiveValue = (!item.IsArchived).ToString().ToLowerInvariant();
+                        <tr class="align-middle hover:bg-gray-50/50">
+                            <td class="px-4 py-3">
+                                <p class="font-semibold text-ink">@item.ItemName</p>
+                                <p class="mt-1 text-xs text-gray-500"><span class="item-code">@item.ItemCode</span>@if (!string.IsNullOrWhiteSpace(item.Brand) || !string.IsNullOrWhiteSpace(item.Model)) { <span> - @item.Brand @item.Model</span> }</p>
+                            </td>
+                            <td class="px-4 py-3">
+                                <p class="font-medium text-ink">@item.CategoryName</p>
+                                <p class="mt-1 text-xs text-gray-500 item-code">@item.CategoryCode</p>
+                            </td>
+                            <td class="px-4 py-3 text-gray-700">@(string.IsNullOrWhiteSpace(item.SerialNumber) ? "-" : item.SerialNumber)</td>
+                            <td class="px-4 py-3 text-gray-700">@displayedCondition</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex border px-2 py-0.5 text-[11px] font-medium @(item.IsArchived ? "border-gray-300 text-gray-500" : item.ItemStatus == "Available" ? "border-primary text-primary-strong" : "border-ink text-ink")">@displayedStatus</span>
+                                @if (item.IsLocked && !item.IsArchived)
+                                {
+                                    <p class="mt-1 text-[11px] text-gray-500">Active reservation or loan</p>
+                                }
+                            </td>
+                            <td class="px-4 py-3 text-gray-700">@item.Location</td>
+                            <td class="px-4 py-3 text-right">
+                                <div class="inline-flex items-center justify-end gap-3 text-xs">
+                                    @if (!item.IsArchived && !item.IsLocked)
+                                    {
+                                        <a asp-action="EditEquipment" asp-route-id="@item.EquipmentId" class="font-semibold text-primary-strong hover:underline">Edit</a>
+                                        <span class="text-gray-300" aria-hidden="true">|</span>
+                                    }
+                                    else if (item.IsLocked && !item.IsArchived)
+                                    {
+                                        <span class="text-gray-400" title="Close the active reservation or loan before editing">Edit locked</span>
+                                        <span class="text-gray-300" aria-hidden="true">|</span>
+                                    }
+                                    <form asp-action="SetEquipmentArchived" method="post" class="inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.EquipmentId" />
+                                        <input type="hidden" name="archived" value="@archiveValue" />
+                                        <input type="hidden" name="equipmentSearch" value="@Model.Equipment.Search" />
+                                        <input type="hidden" name="equipmentStatus" value="@Model.Equipment.StatusFilter" />
+                                        <input type="hidden" name="equipmentCategoryId" value="@Model.Equipment.CategoryId" />
+                                        <input type="hidden" name="equipmentPage" value="@Model.Equipment.Page" />
+                                        @if (item.IsArchived)
+                                        {
+                                            <button type="submit" class="font-semibold text-primary-strong hover:underline">Restore</button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit" class="font-semibold text-gray-700 hover:text-ink hover:underline" onclick="return confirm('Archive this item from active inventory? Its reservation and return history will be preserved.')">Archive</button>
+                                        }
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
+
+        <nav class="mt-3 flex items-center justify-between text-xs text-gray-500" aria-label="Equipment item pages">
+            <span>@Model.Equipment.TotalCount item@(Model.Equipment.TotalCount == 1 ? "" : "s") - Page @Model.Equipment.Page of @Model.Equipment.TotalPages</span>
+            <div class="flex gap-2">
+                @if (Model.Equipment.Page > 1)
+                {
+                    <a asp-action="Index" asp-route-tab="equipment" asp-route-equipmentSearch="@Model.Equipment.Search" asp-route-equipmentStatus="@Model.Equipment.StatusFilter" asp-route-equipmentCategoryId="@Model.Equipment.CategoryId" asp-route-equipmentPage="@(Model.Equipment.Page - 1)" class="border border-gray-200 bg-white px-3 py-2 text-gray-700 hover:border-gray-400">Previous</a>
+                }
+                @if (Model.Equipment.Page < Model.Equipment.TotalPages)
+                {
+                    <a asp-action="Index" asp-route-tab="equipment" asp-route-equipmentSearch="@Model.Equipment.Search" asp-route-equipmentStatus="@Model.Equipment.StatusFilter" asp-route-equipmentCategoryId="@Model.Equipment.CategoryId" asp-route-equipmentPage="@(Model.Equipment.Page + 1)" class="border border-gray-200 bg-white px-3 py-2 text-gray-700 hover:border-gray-400">Next</a>
+                }
+            </div>
+        </nav>
     </section>
 
     <!-- ================================================================= -->
