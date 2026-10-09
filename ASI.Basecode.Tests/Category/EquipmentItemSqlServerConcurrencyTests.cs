@@ -1,14 +1,17 @@
 using ASI.Basecode.Data;
 using ASI.Basecode.Data.Models;
+using ASI.Basecode.Data.Repositories;
 using ASI.Basecode.Services.ServiceModels.EquipmentItem;
+using ASI.Basecode.Services.ServiceModels.Reservations;
 using ASI.Basecode.Services.Services;
+using ASI.Basecode.Services.Utilities;
+using ASI.Basecode.Tests.Reservations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Data.Common;
-using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,13 +39,13 @@ namespace ASI.Basecode.Tests.Category
                 string adminId;
                 long categoryId;
                 long equipmentId;
-                long borrowerProfileId;
+                string borrowerUserId;
                 string itemCode;
 
                 await using (var setup = new AsiBasecodeDBContext(options))
                 {
                     await setup.Database.MigrateAsync();
-                    (adminId, categoryId, equipmentId, borrowerProfileId, itemCode) =
+                    (adminId, categoryId, equipmentId, borrowerUserId, itemCode) =
                         await SeedAsync(setup);
                 }
 
@@ -57,6 +60,7 @@ namespace ASI.Basecode.Tests.Category
                     .UseSqlServer(connectionString)
                     .AddInterceptors(reservationLockObserver)
                     .Options;
+                var nowUtc = DateTime.UtcNow;
 
                 var inventoryTask = Task.Run(async () =>
                 {
@@ -80,55 +84,31 @@ namespace ASI.Basecode.Tests.Category
                     });
                 });
 
-                Task<bool> reservationTask = null;
+                Task<ReservationResult> reservationTask = null;
                 var lockQueryWasBlocked = false;
                 try
                 {
-                    // Pause inventory after its reservation check but before its write;
-                    // its transaction and per-item lock remain open during the pause.
                     await inventorySaveGate.SaveStarted.Task.WaitAsync(TimeSpan.FromSeconds(30));
 
-                // This test writer intentionally uses the same public lock primitive and
-                // lock order required of the reservation create/approve workflow.
-                    reservationTask = Task.Run(async () =>
+                    // Exercise the production submit path while inventory holds the shared
+                    // row lock after its reservation check but before writing the item change.
+                    reservationTask = Task.Run(() =>
                     {
-                        await using var db = new AsiBasecodeDBContext(reservationOptions);
-                        await using var transaction =
-                            await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-
-                        var item = await EquipmentItemConcurrencyLock.LoadForUpdateAsync(
-                            db, equipmentId);
-                        if (item == null || item.IsArchived ||
-                            item.ItemStatus != DomainValues.EquipmentStatuses.Available)
+                        using var db = new AsiBasecodeDBContext(reservationOptions);
+                        var unitOfWork = new UnitOfWork(db);
+                        var service = new ReservationService(
+                            unitOfWork,
+                            new ReservationRepository(unitOfWork),
+                            new EquipmentItemRepository(unitOfWork),
+                            new BorrowerProfileRepository(unitOfWork),
+                            new ReservationTestHelpers.FixedTimeProvider(nowUtc));
+                        return service.SubmitReservation(new ReservationCreateViewModel
                         {
-                            return false;
-                        }
-
-                        var now = DateTime.UtcNow;
-                        var hasBlockingReservation = await db.Reservations.AnyAsync(reservation =>
-                            reservation.EquipmentId == equipmentId &&
-                            ((reservation.Status == DomainValues.ReservationStatuses.Pending &&
-                              reservation.ReservationEnd > now) ||
-                             (reservation.Status == DomainValues.ReservationStatuses.Approved &&
-                              (reservation.ReleaseRecord == null ||
-                               reservation.ReleaseRecord.ReturnRecord == null))));
-                        if (hasBlockingReservation)
-                        {
-                            return false;
-                        }
-
-                        db.Reservations.Add(new Reservation
-                        {
-                            BorrowerProfileId = borrowerProfileId,
                             EquipmentId = equipmentId,
-                            ReservationStart = now.AddHours(1),
-                            ReservationEnd = now.AddHours(2),
-                            Purpose = "SQL Server concurrency regression test",
-                            Status = DomainValues.ReservationStatuses.Pending
-                        });
-                        await db.SaveChangesAsync();
-                        await transaction.CommitAsync();
-                        return true;
+                            ReservationStart = ManilaClock.ToLocal(nowUtc.AddHours(1)),
+                            ReservationEnd = ManilaClock.ToLocal(nowUtc.AddHours(2)),
+                            Purpose = "SQL Server concurrency regression test"
+                        }, borrowerUserId);
                     });
 
                     await reservationLockObserver.LockQueryStarted.Task
@@ -146,10 +126,12 @@ namespace ASI.Basecode.Tests.Category
                 await reservationTask.WaitAsync(TimeSpan.FromSeconds(45));
 
                 var inventoryResult = await inventoryTask;
-                var reservationCommitted = await reservationTask;
+                var reservationResult = await reservationTask;
                 Assert.True(lockQueryWasBlocked,
                     "The reservation workflow should wait for the in-flight inventory transaction's per-item lock.");
-                Assert.NotEqual(inventoryResult.Succeeded, reservationCommitted);
+                Assert.True(inventoryResult.Succeeded, inventoryResult.Message);
+                Assert.False(reservationResult.Succeeded, reservationResult.Message);
+                Assert.Contains("can't be reserved", reservationResult.Message);
 
                 await using var verify = new AsiBasecodeDBContext(options);
                 var finalItem = await verify.EquipmentItems.AsNoTracking()
@@ -159,22 +141,12 @@ namespace ASI.Basecode.Tests.Category
                         reservation.Status == DomainValues.ReservationStatuses.Pending &&
                         reservation.ReservationEnd > DateTime.UtcNow);
 
-                if (inventoryResult.Succeeded)
+                Assert.Equal(archiveInventoryItem, finalItem.IsArchived);
+                if (!archiveInventoryItem)
                 {
-                    Assert.Equal(archiveInventoryItem, finalItem.IsArchived);
-                    if (!archiveInventoryItem)
-                    {
-                        Assert.Equal(DomainValues.EquipmentStatuses.UnderMaintenance, finalItem.ItemStatus);
-                    }
-                    Assert.Equal(0, pendingCount);
+                    Assert.Equal(DomainValues.EquipmentStatuses.UnderMaintenance, finalItem.ItemStatus);
                 }
-                else
-                {
-                    Assert.True(reservationCommitted);
-                    Assert.Equal(DomainValues.EquipmentStatuses.Available, finalItem.ItemStatus);
-                    Assert.False(finalItem.IsArchived);
-                    Assert.Equal(1, pendingCount);
-                }
+                Assert.Equal(0, pendingCount);
             }
             finally
             {
@@ -184,7 +156,7 @@ namespace ASI.Basecode.Tests.Category
         }
 
         private static async Task<(string AdminId, long CategoryId,
-            long EquipmentId, long BorrowerProfileId, string ItemCode)> SeedAsync(
+            long EquipmentId, string BorrowerUserId, string ItemCode)> SeedAsync(
             AsiBasecodeDBContext db)
         {
             var adminId = Guid.NewGuid().ToString("N");
@@ -242,8 +214,7 @@ namespace ASI.Basecode.Tests.Category
             });
             await db.SaveChangesAsync();
 
-            return (adminId, category.CategoryId, item.EquipmentId,
-                profile.BorrowerProfileId, itemCode);
+            return (adminId, category.CategoryId, item.EquipmentId, borrowerId, itemCode);
         }
 
         private static ApplicationUser NewUser(string id, string code) => new()
@@ -295,17 +266,31 @@ namespace ASI.Basecode.Tests.Category
         public TaskCompletionSource<bool> LockQueryCompleted { get; } = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
+        public override InterceptionResult<DbDataReader> ReaderExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result)
+        {
+            ObserveStarted(command);
+            return result;
+        }
+
+        public override DbDataReader ReaderExecuted(
+            DbCommand command,
+            CommandExecutedEventData eventData,
+            DbDataReader result)
+        {
+            ObserveCompleted(command);
+            return result;
+        }
+
         public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
             DbCommand command,
             CommandEventData eventData,
             InterceptionResult<DbDataReader> result,
             CancellationToken cancellationToken = default)
         {
-            if (command.CommandText.Contains("UPDLOCK", StringComparison.OrdinalIgnoreCase))
-            {
-                LockQueryStarted.TrySetResult(true);
-            }
-
+            ObserveStarted(command);
             return ValueTask.FromResult(result);
         }
 
@@ -315,12 +300,24 @@ namespace ASI.Basecode.Tests.Category
             DbDataReader result,
             CancellationToken cancellationToken = default)
         {
+            ObserveCompleted(command);
+            return ValueTask.FromResult(result);
+        }
+
+        private void ObserveStarted(DbCommand command)
+        {
+            if (command.CommandText.Contains("UPDLOCK", StringComparison.OrdinalIgnoreCase))
+            {
+                LockQueryStarted.TrySetResult(true);
+            }
+        }
+
+        private void ObserveCompleted(DbCommand command)
+        {
             if (command.CommandText.Contains("UPDLOCK", StringComparison.OrdinalIgnoreCase))
             {
                 LockQueryCompleted.TrySetResult(true);
             }
-
-            return ValueTask.FromResult(result);
         }
     }
 

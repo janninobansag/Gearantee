@@ -1,3 +1,4 @@
+using ASI.Basecode.Data;
 using ASI.Basecode.Data.Interfaces;
 using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
@@ -6,6 +7,7 @@ using ASI.Basecode.Services.Utilities;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 
 namespace ASI.Basecode.Services.Services
@@ -24,17 +26,20 @@ namespace ASI.Basecode.Services.Services
             DomainValues.ReservationStatuses.Expired
         };
 
+        private readonly AsiBasecodeDBContext _db;
         private readonly IReservationRepository _reservationRepository;
         private readonly IEquipmentItemRepository _equipmentItemRepository;
         private readonly IBorrowerProfileRepository _borrowerProfileRepository;
         private readonly TimeProvider _timeProvider;
 
         public ReservationService(
+            IUnitOfWork unitOfWork,
             IReservationRepository reservationRepository,
             IEquipmentItemRepository equipmentItemRepository,
             IBorrowerProfileRepository borrowerProfileRepository,
             TimeProvider timeProvider)
         {
+            _db = (AsiBasecodeDBContext)unitOfWork.Database;
             _reservationRepository = reservationRepository;
             _equipmentItemRepository = equipmentItemRepository;
             _borrowerProfileRepository = borrowerProfileRepository;
@@ -82,15 +87,6 @@ namespace ASI.Basecode.Services.Services
                 return ReservationResult.Fail(eligibilityError);
             }
 
-            var itemIsReservable = _equipmentItemRepository.GetEquipmentItems()
-                .AsNoTracking()
-                .Where(ReservationAvailability.IsReservable())
-                .Any(item => item.EquipmentId == model.EquipmentId);
-            if (!itemIsReservable)
-            {
-                return ReservationResult.Fail("This item can't be reserved right now. It may be under maintenance, unavailable, or archived.");
-            }
-
             var windowError = ReservationAvailability.ValidateWindow(model.ReservationStart, model.ReservationEnd, nowUtc);
             if (windowError != null)
             {
@@ -111,14 +107,6 @@ namespace ASI.Basecode.Services.Services
             var startUtc = ManilaClock.ToUtc(model.ReservationStart.Value);
             var endUtc = ManilaClock.ToUtc(model.ReservationEnd.Value);
 
-            var isBooked = _reservationRepository.GetReservations()
-                .Where(reservation => reservation.EquipmentId == model.EquipmentId)
-                .Any(ReservationAvailability.Blocks(startUtc, endUtc, nowUtc));
-            if (isBooked)
-            {
-                return ReservationResult.Fail("This item is already booked or still on loan during that time. Pick a time outside the booked times.");
-            }
-
             var profileId = profile.BorrowerProfileId;
 
             var newReservation = new Reservation
@@ -134,12 +122,41 @@ namespace ASI.Basecode.Services.Services
                 UpdatedAt = nowUtc
             };
 
-            // D3: one open request per borrower, item, and window. A Pending request whose
-            // start has passed is Expired (D2), so it no longer counts. The check and the
-            // insert run under one lock per borrower and item, so two tabs submitting at the
-            // same moment can't both pass the check (RES-01).
-            using (var transaction = _reservationRepository.BeginSubmissionLock(profileId, model.EquipmentId))
+            // Inventory changes and reservation submissions acquire the equipment row lock
+            // first. All reservation checks and the insert stay inside that serializable
+            // boundary, so a concurrent archive/status change cannot invalidate an earlier
+            // availability check (CONC-01).
+            using (var transaction = _db.Database.BeginTransaction(IsolationLevel.Serializable))
             {
+                var lockedItem = EquipmentItemConcurrencyLock.LoadForUpdate(_db, model.EquipmentId);
+                if (lockedItem == null)
+                {
+                    return ReservationResult.Fail("This item can't be reserved right now. It may be under maintenance, unavailable, or archived.");
+                }
+
+                // D3: one open request per borrower, item, and window. Acquire this second lock
+                // only after the shared item lock; the order is consistent across submissions.
+                _reservationRepository.AcquireSubmissionLock(profileId, model.EquipmentId);
+
+                var itemIsReservable = _equipmentItemRepository.GetEquipmentItems()
+                    .AsNoTracking()
+                    .Where(ReservationAvailability.IsReservable())
+                    .Any(item => item.EquipmentId == model.EquipmentId);
+                if (!itemIsReservable)
+                {
+                    return ReservationResult.Fail("This item can't be reserved right now. It may be under maintenance, unavailable, or archived.");
+                }
+
+                var isBooked = _reservationRepository.GetReservations()
+                    .Where(reservation => reservation.EquipmentId == model.EquipmentId)
+                    .Any(ReservationAvailability.Blocks(startUtc, endUtc, nowUtc));
+                if (isBooked)
+                {
+                    return ReservationResult.Fail("This item is already booked or still on loan during that time. Pick a time outside the booked times.");
+                }
+
+                // A Pending request whose start has passed is Expired (D2), so it no longer
+                // counts. The check and insert remain protected by both locks (RES-01).
                 var hasDuplicate = _reservationRepository.GetReservations()
                     .Any(reservation =>
                         reservation.BorrowerProfileId == profileId &&

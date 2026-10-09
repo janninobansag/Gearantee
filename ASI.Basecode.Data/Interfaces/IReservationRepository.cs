@@ -1,5 +1,4 @@
 using ASI.Basecode.Data.Models;
-using Microsoft.EntityFrameworkCore.Storage;
 using System.Linq;
 
 namespace ASI.Basecode.Data.Interfaces
@@ -11,9 +10,12 @@ namespace ASI.Basecode.Data.Interfaces
         void UpdateReservation(Reservation model);
 
         /// <summary>
-        /// Starts a transaction that holds an exclusive lock on one borrower and item until it
-        /// commits or is disposed, so overlapping submissions for that pair run one at a time.
+        /// Acquires submission locks inside the caller's active SERIALIZABLE transaction. A
+        /// borrower-scoped gate prevents SQL Server range-lock deadlocks across that borrower's
+        /// different items; a borrower/item lock protects the duplicate check. The caller must
+        /// first acquire the shared equipment row lock so inventory and reservation workflows
+        /// use the same lock order.
         /// </summary>
-        IDbContextTransaction BeginSubmissionLock(long borrowerProfileId, long equipmentId);
+        void AcquireSubmissionLock(long borrowerProfileId, long equipmentId);
     }
 }

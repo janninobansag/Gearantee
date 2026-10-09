@@ -384,6 +384,7 @@ The first version is complete when borrowers can securely reserve one available 
 | 10/9/2026 | Addressed PR #27 CI findings by registering the item service in the category test host, using encoded form values for equipment pagination, and removing user-supplied item codes from logs | Bansag |
 | 10/9/2026 | Addressed PR #27 review feedback with optional catalog-image persistence, serializable inventory lock checks, and equipment-item service/HTTP regression tests | Bansag |
 | 10/9/2026 | Addressed PR #27 concurrency and search findings with a shared SQL Server item lock, an opt-in inventory/reservation race regression test, and collation-aware search queries | Bansag |
+| 10/9/2026 | Addressed PR #27 CONC-01/TEST-02 by locking and revalidating the item inside production reservation submission, preventing cross-item borrower range-lock deadlocks, and testing the real service against LocalDB | Bansag |
 | 10/7/2026 | Started WBS 34.00: borrower equipment catalog with search, category and free-window filters, item details with booked times, and the shared reservation availability rule | Cataraja |
 | 10/7/2026 | Started WBS 35.00: borrower reservation request form with eligibility, availability, and duplicate-request checks | Cataraja |
 | 10/7/2026 | Started WBS 36.00: My Reservations list with status tabs and a reservation detail page; stale pending requests are marked Expired when viewed | Cataraja |

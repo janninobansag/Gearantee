@@ -21,6 +21,7 @@ namespace ASI.Basecode.Tests.Reservations
         {
             var unitOfWork = new UnitOfWork(db);
             return new ReservationService(
+                unitOfWork,
                 new ReservationRepository(unitOfWork),
                 new EquipmentItemRepository(unitOfWork),
                 new BorrowerProfileRepository(unitOfWork),
