@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -100,6 +101,7 @@ namespace ASI.Basecode.Services.Services
             var totalCount = await query.CountAsync();
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PageSize));
             page = Math.Min(page, totalPages);
+            var now = DateTime.UtcNow;
 
             var rows = await query
                 .OrderBy(item => item.ItemName)
@@ -122,7 +124,8 @@ namespace ASI.Basecode.Services.Services
                     IsArchived = item.IsArchived,
                     IsLocked = item.ItemStatus == DomainValues.EquipmentStatuses.Borrowed ||
                         item.Reservations.Any(reservation =>
-                            reservation.Status == DomainValues.ReservationStatuses.Pending ||
+                            (reservation.Status == DomainValues.ReservationStatuses.Pending &&
+                             reservation.ReservationEnd > now) ||
                             (reservation.Status == DomainValues.ReservationStatuses.Approved &&
                              (reservation.ReleaseRecord == null || reservation.ReleaseRecord.ReturnRecord == null)))
                 })
@@ -181,6 +184,7 @@ namespace ASI.Basecode.Services.Services
                 ItemCode = item.ItemCode,
                 ItemName = item.ItemName,
                 Description = item.Description,
+                ImageUrl = item.ImageUrl,
                 Brand = item.Brand,
                 ModelName = item.Model,
                 SerialNumber = item.SerialNumber,
@@ -240,6 +244,7 @@ namespace ASI.Basecode.Services.Services
                 ItemCode = normalized.ItemCode,
                 ItemName = normalized.ItemName,
                 Description = normalized.Description,
+                ImageUrl = normalized.ImageUrl,
                 Brand = normalized.Brand,
                 Model = normalized.ModelName,
                 SerialNumber = normalized.SerialNumber,
@@ -284,6 +289,14 @@ namespace ASI.Basecode.Services.Services
             {
                 return EquipmentItemOperationResult.Failure("Equipment details are required.");
             }
+
+            // Keep the reservation check and inventory write atomic. Under SQL Server's
+            // SERIALIZABLE isolation, the Reservation(EquipmentId, ...) index range is
+            // protected until commit, preventing a concurrent reservation insert from
+            // slipping between this check and the equipment update.
+            // Reservation creation/approval must also re-check availability and write
+            // its reservation within a SERIALIZABLE transaction.
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
             var item = await _db.EquipmentItems
                 .SingleOrDefaultAsync(equipment =>
@@ -330,6 +343,7 @@ namespace ASI.Basecode.Services.Services
             item.ItemCode = normalized.ItemCode;
             item.ItemName = normalized.ItemName;
             item.Description = normalized.Description;
+            item.ImageUrl = normalized.ImageUrl;
             item.Brand = normalized.Brand;
             item.Model = normalized.ModelName;
             item.SerialNumber = normalized.SerialNumber;
@@ -341,6 +355,7 @@ namespace ASI.Basecode.Services.Services
             try
             {
                 await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
                 _logger.LogInformation(
                     "Equipment item {EquipmentId} updated by administrator {UserId}",
                     item.EquipmentId,
@@ -367,6 +382,9 @@ namespace ASI.Basecode.Services.Services
             {
                 return EquipmentItemOperationResult.AccessDenied();
             }
+
+            // Archive must use the same serializable lock/check/write boundary as Edit.
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
             var item = await _db.EquipmentItems
                 .Include(equipment => equipment.Category)
@@ -398,6 +416,7 @@ namespace ASI.Basecode.Services.Services
             item.IsArchived = isArchived;
             item.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             var action = isArchived ? "archived" : "restored to active inventory";
             _logger.LogInformation(
@@ -466,9 +485,11 @@ namespace ASI.Basecode.Services.Services
                 return true;
             }
 
+            var now = DateTime.UtcNow;
             return await _db.Reservations.AsNoTracking().AnyAsync(reservation =>
                 reservation.EquipmentId == item.EquipmentId &&
-                (reservation.Status == DomainValues.ReservationStatuses.Pending ||
+                ((reservation.Status == DomainValues.ReservationStatuses.Pending &&
+                  reservation.ReservationEnd > now) ||
                  (reservation.Status == DomainValues.ReservationStatuses.Approved &&
                   (reservation.ReleaseRecord == null || reservation.ReleaseRecord.ReturnRecord == null))));
         }
@@ -523,6 +544,7 @@ namespace ASI.Basecode.Services.Services
             }
 
             var serialNumber = NullIfWhiteSpace(model.SerialNumber);
+            var imageUrl = NullIfWhiteSpace(model.ImageUrl);
             var brand = NullIfWhiteSpace(model.Brand);
             var modelName = NullIfWhiteSpace(model.ModelName);
             var description = NullIfWhiteSpace(model.Description);
@@ -532,12 +554,19 @@ namespace ASI.Basecode.Services.Services
                 return NormalizedEquipmentItem.Invalid("One or more equipment fields exceed the allowed length.");
             }
 
+            if ((imageUrl?.Length ?? 0) > 500 || !IsSupportedImageUrl(imageUrl))
+            {
+                return NormalizedEquipmentItem.Invalid(
+                    "Catalog image must be an HTTPS URL or a same-site path beginning with '/'.");
+            }
+
             return new NormalizedEquipmentItem
             {
                 IsValid = true,
                 ItemCode = itemCode,
                 ItemName = itemName,
                 Description = description,
+                ImageUrl = imageUrl,
                 Brand = brand,
                 ModelName = modelName,
                 SerialNumber = serialNumber,
@@ -550,6 +579,30 @@ namespace ASI.Basecode.Services.Services
         private static string NullIfWhiteSpace(string value) =>
             string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+        private static bool IsSupportedImageUrl(string imageUrl)
+        {
+            if (imageUrl == null)
+            {
+                return true;
+            }
+
+            if (imageUrl.StartsWith("/", StringComparison.Ordinal))
+            {
+                return !imageUrl.StartsWith("//", StringComparison.Ordinal) &&
+                    !imageUrl.Contains((char)92) &&
+                    !imageUrl.Any(char.IsControl);
+            }
+
+            if (Uri.TryCreate(imageUrl, UriKind.Absolute, out var absoluteUri))
+            {
+                return string.Equals(absoluteUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(absoluteUri.Host) &&
+                    string.IsNullOrEmpty(absoluteUri.UserInfo);
+            }
+
+            return false;
+        }
+
         private sealed class NormalizedEquipmentItem
         {
             public bool IsValid { get; set; }
@@ -557,6 +610,7 @@ namespace ASI.Basecode.Services.Services
             public string ItemCode { get; set; }
             public string ItemName { get; set; }
             public string Description { get; set; }
+            public string ImageUrl { get; set; }
             public string Brand { get; set; }
             public string ModelName { get; set; }
             public string SerialNumber { get; set; }

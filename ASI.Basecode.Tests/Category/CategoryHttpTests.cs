@@ -357,6 +357,151 @@ namespace ASI.Basecode.Tests.Category
             Assert.Contains(">Previous</a>", html);
             Assert.Contains(">Next</a>", html);
         }
+
+        [Fact]
+        public async Task HttpCreateEquipment_PersistsCatalogImageUrl()
+        {
+            await using var site = await CategoryHttpSite.CreateAsync();
+            long categoryId;
+            using (var scope = site.Environment.Provider.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AsiBasecodeDBContext>();
+                var category = new EquipmentCategory
+                {
+                    CategoryCode = "HTTP-EQ-IMG",
+                    CategoryName = "HTTP Equipment Images",
+                    IsActive = true
+                };
+                db.EquipmentCategories.Add(category);
+                await db.SaveChangesAsync();
+                categoryId = category.CategoryId;
+            }
+
+            var token = await site.Token("/Categories/CreateEquipment");
+            var imageUrl = "https://assets.example.test/http-projector.jpg";
+            var form = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("__RequestVerificationToken", token),
+                new KeyValuePair<string, string>("CategoryId", categoryId.ToString()),
+                new KeyValuePair<string, string>("ItemCode", "HTTP-EQ-IMAGE"),
+                new KeyValuePair<string, string>("ItemName", "HTTP projector"),
+                new KeyValuePair<string, string>("Location", "Test store"),
+                new KeyValuePair<string, string>("ConditionStatus", DomainValues.ReturnConditions.Good),
+                new KeyValuePair<string, string>("ItemStatus", DomainValues.EquipmentStatuses.Available),
+                new KeyValuePair<string, string>("ImageUrl", imageUrl)
+            });
+
+            var response = await site.Client.PostAsync("/Categories/CreateEquipment", form);
+
+            Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+            using var verifyScope = site.Environment.Provider.CreateScope();
+            var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AsiBasecodeDBContext>();
+            var saved = await verifyDb.EquipmentItems.SingleAsync(item => item.ItemCode == "HTTP-EQ-IMAGE");
+            Assert.Equal(imageUrl, saved.ImageUrl);
+        }
+
+        [Fact]
+        public async Task HttpCreateEquipment_InvalidImageUrl_RedisplaysFormWithoutSaving()
+        {
+            await using var site = await CategoryHttpSite.CreateAsync();
+            long categoryId;
+            using (var scope = site.Environment.Provider.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AsiBasecodeDBContext>();
+                var category = new EquipmentCategory
+                {
+                    CategoryCode = "HTTP-EQ-BADIMG",
+                    CategoryName = "HTTP Invalid Equipment Image",
+                    IsActive = true
+                };
+                db.EquipmentCategories.Add(category);
+                await db.SaveChangesAsync();
+                categoryId = category.CategoryId;
+            }
+
+            var token = await site.Token("/Categories/CreateEquipment");
+            var form = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("__RequestVerificationToken", token),
+                new KeyValuePair<string, string>("CategoryId", categoryId.ToString()),
+                new KeyValuePair<string, string>("ItemCode", "HTTP-EQ-BADIMAGE"),
+                new KeyValuePair<string, string>("ItemName", "Invalid image item"),
+                new KeyValuePair<string, string>("Location", "Test store"),
+                new KeyValuePair<string, string>("ConditionStatus", DomainValues.ReturnConditions.Good),
+                new KeyValuePair<string, string>("ItemStatus", DomainValues.EquipmentStatuses.Available),
+                new KeyValuePair<string, string>("ImageUrl", "javascript:alert(1)")
+            });
+
+            var response = await site.Client.PostAsync("/Categories/CreateEquipment", form);
+            var html = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Contains("HTTPS URL", html, StringComparison.OrdinalIgnoreCase);
+            using var verifyScope = site.Environment.Provider.CreateScope();
+            var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AsiBasecodeDBContext>();
+            Assert.False(await verifyDb.EquipmentItems.AnyAsync(item => item.ItemCode == "HTTP-EQ-BADIMAGE"));
+        }
+
+        [Fact]
+        public async Task HttpSetEquipmentArchived_ArchivesAndRestoresItem()
+        {
+            await using var site = await CategoryHttpSite.CreateAsync();
+            long equipmentId;
+            using (var scope = site.Environment.Provider.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AsiBasecodeDBContext>();
+                var category = new EquipmentCategory
+                {
+                    CategoryCode = "HTTP-EQ-ARCH",
+                    CategoryName = "HTTP Archive Equipment",
+                    IsActive = true
+                };
+                db.EquipmentCategories.Add(category);
+                await db.SaveChangesAsync();
+                var item = new EquipmentItem
+                {
+                    CategoryId = category.CategoryId,
+                    ItemCode = "HTTP-EQ-ARCHIVE",
+                    ItemName = "Archive test item",
+                    Location = "Test store",
+                    ConditionStatus = DomainValues.ReturnConditions.Good,
+                    ItemStatus = DomainValues.EquipmentStatuses.Available
+                };
+                db.EquipmentItems.Add(item);
+                await db.SaveChangesAsync();
+                equipmentId = item.EquipmentId;
+            }
+
+            var token = await site.Token("/Categories?tab=equipment");
+            foreach (var archived in new[] { "true", "false" })
+            {
+                var form = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("__RequestVerificationToken", token),
+                    new KeyValuePair<string, string>("id", equipmentId.ToString()),
+                    new KeyValuePair<string, string>("archived", archived)
+                });
+                var response = await site.Client.PostAsync("/Categories/SetEquipmentArchived", form);
+                Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+
+                using var verifyScope = site.Environment.Provider.CreateScope();
+                var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AsiBasecodeDBContext>();
+                var saved = await verifyDb.EquipmentItems.SingleAsync(item => item.EquipmentId == equipmentId);
+                Assert.Equal(archived == "true", saved.IsArchived);
+            }
+        }
+
+        [Fact]
+        public async Task EquipmentManagement_RequiresAdministratorRole()
+        {
+            await using var site = await CategoryHttpSite.CreateAsync();
+            site.Client.DefaultRequestHeaders.Remove("X-Test-Role");
+            site.Client.DefaultRequestHeaders.Add("X-Test-Role", DomainValues.Roles.Borrower);
+
+            var response = await site.Client.GetAsync("/Categories/CreateEquipment");
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
     }
 
     internal sealed class CategoryTestEnvironment : IAsyncDisposable

@@ -44,6 +44,13 @@
         <span asp-validation-for="ModelName" class="field-validation-error"></span>
     </div>
 
+    <div class="sm:col-span-2">
+        <label asp-for="ImageUrl" class="mb-1 block text-sm font-medium"></label>
+        <input asp-for="ImageUrl" class="input" type="text" inputmode="url" autocomplete="off" placeholder="https://example.com/projector.jpg or /img/projector.jpg" />
+        <span asp-validation-for="ImageUrl" class="field-validation-error"></span>
+        <p class="mt-1 text-xs text-gray-500">Optional. Use an HTTPS image URL or a path on this site.</p>
+    </div>
+
     <div>
         <label asp-for="SerialNumber" class="mb-1 block text-sm font-medium"></label>
         <input asp-for="SerialNumber" class="input" autocomplete="off" />

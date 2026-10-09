@@ -58,6 +58,10 @@ namespace ASI.Basecode.Services.ServiceModels.EquipmentItem
         [StringLength(4000, ErrorMessage = "Description cannot exceed 4,000 characters.")]
         public string Description { get; set; }
 
+        [StringLength(500, ErrorMessage = "Catalog image URL cannot exceed 500 characters.")]
+        [Display(Name = "Catalog image URL")]
+        public string ImageUrl { get; set; }
+
         [StringLength(150, ErrorMessage = "Brand cannot exceed 150 characters.")]
         public string Brand { get; set; }
 
