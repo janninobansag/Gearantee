@@ -256,8 +256,8 @@ namespace ASI.Basecode.Services.Services
                 _db.EquipmentItems.Add(item);
                 await _db.SaveChangesAsync();
                 _logger.LogInformation(
-                    "Equipment item {ItemCode} created by administrator {UserId}",
-                    item.ItemCode,
+                    "Equipment item {EquipmentId} created by administrator {UserId}",
+                    item.EquipmentId,
                     actorUserId);
                 return EquipmentItemOperationResult.Success(
                     $"Equipment item '{item.ItemName}' was registered.",
@@ -265,8 +265,7 @@ namespace ASI.Basecode.Services.Services
             }
             catch (DbUpdateException exception)
             {
-                _logger.LogError(exception,
-                    "Database error registering equipment item {ItemCode}", item.ItemCode);
+                _logger.LogError(exception, "Database error registering equipment item.");
                 return EquipmentItemOperationResult.Failure(
                     "An item with this code or serial number already exists.");
             }

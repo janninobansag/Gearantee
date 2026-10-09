@@ -31,8 +31,8 @@ The tracker contains 44 leaf features. Group headings such as 2.00 and 4.00 are 
 | Status | Count |
 | --- | --- |
 | Done | 5 |
-| In Review | 13 |
-| In Progress | 4 |
+| In Review | 17 |
+| In Progress | 0 |
 | Not Started | 22 |
 | Blocked | 0 |
 
@@ -76,10 +76,10 @@ Shared rows count for each assigned member.
 | 22.00 | Update Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | 10/4/2026 |  | In Review | #25 | M3 |
 | 23.00 | Delete/Deactivate Category | Gesim | 9/29/2026 | 10/2/2026 | 3 | 10/4/2026 |  | In Review | #25 | M3 |
 | **24.00** | **Master Data: Equipment Item Management** | | | | | | | | | |
-| 25.00 | View Equipment Items | Bansag | 10/3/2026 | 10/6/2026 | 3 | 10/9/2026 | | In Progress | | M3 |
-| 26.00 | Register Equipment Item | Bansag | 10/3/2026 | 10/6/2026 | 3 | 10/9/2026 | | In Progress | | M3 |
-| 27.00 | Update Equipment Item | Bansag | 10/3/2026 | 10/6/2026 | 3 | 10/9/2026 | | In Progress | | M3 |
-| 28.00 | Delete Equipment Items | Bansag | 10/3/2026 | 10/6/2026 | 3 | 10/9/2026 | | In Progress | | M3 |
+| 25.00 | View Equipment Items | Bansag | 10/3/2026 | 10/6/2026 | 3 | 10/9/2026 | | In Review | #27 | M3 |
+| 26.00 | Register Equipment Item | Bansag | 10/3/2026 | 10/6/2026 | 3 | 10/9/2026 | | In Review | #27 | M3 |
+| 27.00 | Update Equipment Item | Bansag | 10/3/2026 | 10/6/2026 | 3 | 10/9/2026 | | In Review | #27 | M3 |
+| 28.00 | Delete Equipment Items | Bansag | 10/3/2026 | 10/6/2026 | 3 | 10/9/2026 | | In Review | #27 | M3 |
 | **29.00** | **Master Data: Borrower Profile Management** | | | | | | | | | |
 | 30.00 | View Borrower's Records | Cancencia | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
 | 31.00 | Update Borrower's Records | Cancencia | 9/29/2026 | 10/2/2026 | 3 | | | Not Started | | M3 |
@@ -381,3 +381,4 @@ The first version is complete when borrowers can securely reserve one available 
 | 10/6/2026 | Addressed PR #25 review handoff findings SEC-01, SEC-02, STATE-01, UX-01, LIST-01, and UX-02; added regression tests; clarified opt-in SQL Server tests and qualified inactive-category item registration | Gesim |
 | 10/9/2026 | Started WBS 25.00–28.00 equipment-item management implementation | Bansag |
 | 10/9/2026 | Implemented equipment-item inventory listing, search and filters, registration, editing, and safe archive/restore; web app build passes | Bansag |
+| 10/9/2026 | Addressed PR #27 CI findings by registering the item service in the category test host, using encoded form values for equipment pagination, and removing user-supplied item codes from logs | Bansag |

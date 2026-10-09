@@ -191,16 +191,20 @@
 
         <nav class="mt-3 flex items-center justify-between text-xs text-gray-500" aria-label="Equipment item pages">
             <span>@Model.Equipment.TotalCount item@(Model.Equipment.TotalCount == 1 ? "" : "s") - Page @Model.Equipment.Page of @Model.Equipment.TotalPages</span>
-            <div class="flex gap-2">
+            <form method="get" asp-action="Index" class="flex gap-2">
+                <input type="hidden" name="tab" value="equipment" />
+                <input type="hidden" name="equipmentSearch" value="@Model.Equipment.Search" />
+                <input type="hidden" name="equipmentStatus" value="@Model.Equipment.StatusFilter" />
+                <input type="hidden" name="equipmentCategoryId" value="@Model.Equipment.CategoryId" />
                 @if (Model.Equipment.Page > 1)
                 {
-                    <a asp-action="Index" asp-route-tab="equipment" asp-route-equipmentSearch="@Model.Equipment.Search" asp-route-equipmentStatus="@Model.Equipment.StatusFilter" asp-route-equipmentCategoryId="@Model.Equipment.CategoryId" asp-route-equipmentPage="@(Model.Equipment.Page - 1)" class="border border-gray-200 bg-white px-3 py-2 text-gray-700 hover:border-gray-400">Previous</a>
+                    <button type="submit" name="equipmentPage" value="@(Model.Equipment.Page - 1)" class="border border-gray-200 bg-white px-3 py-2 text-gray-700 hover:border-gray-400">Previous</button>
                 }
                 @if (Model.Equipment.Page < Model.Equipment.TotalPages)
                 {
-                    <a asp-action="Index" asp-route-tab="equipment" asp-route-equipmentSearch="@Model.Equipment.Search" asp-route-equipmentStatus="@Model.Equipment.StatusFilter" asp-route-equipmentCategoryId="@Model.Equipment.CategoryId" asp-route-equipmentPage="@(Model.Equipment.Page + 1)" class="border border-gray-200 bg-white px-3 py-2 text-gray-700 hover:border-gray-400">Next</a>
+                    <button type="submit" name="equipmentPage" value="@(Model.Equipment.Page + 1)" class="border border-gray-200 bg-white px-3 py-2 text-gray-700 hover:border-gray-400">Next</button>
                 }
-            </div>
+            </form>
         </nav>
     </section>
 

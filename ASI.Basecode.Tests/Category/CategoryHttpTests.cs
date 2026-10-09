@@ -381,6 +381,7 @@ namespace ASI.Basecode.Tests.Category
             services.AddIdentityCore<ApplicationUser>().AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<SqliteDashboardDbContext>().AddDefaultTokenProviders();
             services.AddScoped<ICategoryService, CategoryService>();
+            services.AddScoped<IEquipmentItemService, EquipmentItemService>();
         }
 
         public static async Task<CategoryTestEnvironment> CreateAsync()
