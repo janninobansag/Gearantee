@@ -5,7 +5,7 @@
     var statusLabel = Model.AvailabilityStatus == DomainValues.EquipmentStatuses.Borrowed ? "Borrowed" : "Available";
     var fromValue = (ViewData["From"] as DateTime?)?.ToString("yyyy-MM-ddTHH:mm");
     var toValue = (ViewData["To"] as DateTime?)?.ToString("yyyy-MM-ddTHH:mm");
-    var canReserve = User.HasClaim("permission", DomainValues.Permissions.ReservationCreate);
+    var canReserve = User.IsInRole(DomainValues.Roles.Borrower) && User.HasClaim("permission", DomainValues.Permissions.ReservationCreate);
 }
 
 

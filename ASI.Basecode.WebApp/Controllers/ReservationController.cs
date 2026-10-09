@@ -14,9 +14,10 @@ namespace ASI.Basecode.WebApp.Controllers
 {
     /// <summary>
     /// Borrower reservations: submit a request (WBS 35.00), view status (WBS 36.00), and cancel (WBS 37.00).
+    /// Borrowers can always see and cancel their own reservations; only submitting a new
+    /// request needs reservation.create.
     /// </summary>
     [Authorize(Roles = DomainValues.Roles.Borrower)]
-    [Authorize(Policy = DomainValues.Permissions.ReservationCreate)]
     public class ReservationController : ControllerBase<ReservationController>
     {
         private readonly IReservationService _reservationService;
@@ -61,6 +62,7 @@ namespace ASI.Basecode.WebApp.Controllers
 
         // GET: /Reservation/Create?equipmentId=5&from=...&to=...
         [HttpGet]
+        [Authorize(Policy = DomainValues.Permissions.ReservationCreate)]
         public IActionResult Create(long equipmentId, DateTime? from, DateTime? to)
         {
             var item = _catalogService.RetrieveCatalogItem(equipmentId);
@@ -81,6 +83,7 @@ namespace ASI.Basecode.WebApp.Controllers
         // POST: /Reservation/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Policy = DomainValues.Permissions.ReservationCreate)]
         public IActionResult Create(ReservationCreateViewModel model)
         {
             model.Item = _catalogService.RetrieveCatalogItem(model.EquipmentId);

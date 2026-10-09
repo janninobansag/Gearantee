@@ -13,9 +13,10 @@ using System;
 namespace ASI.Basecode.WebApp.Controllers
 {
     /// <summary>
-    /// Borrower equipment catalog: search and view reservable items (WBS 34.00).
+    /// Equipment catalog: search and view reservable items (WBS 34.00). Any role holding
+    /// equipment.browse can read it; submitting a reservation stays Borrower-only in
+    /// ReservationController.
     /// </summary>
-    [Authorize(Roles = DomainValues.Roles.Borrower)]
     [Authorize(Policy = DomainValues.Permissions.EquipmentBrowse)]
     public class CatalogController : ControllerBase<CatalogController>
     {
@@ -57,7 +58,9 @@ namespace ASI.Basecode.WebApp.Controllers
         private void SetPageData(string title)
         {
             ViewData["Title"] = title;
-            ViewData["Eyebrow"] = "Borrower workspace";
+            ViewData["Eyebrow"] = User.IsInRole(DomainValues.Roles.Administrator) ? "Administrator workspace"
+                : User.IsInRole(DomainValues.Roles.Custodian) ? "Custodian workspace"
+                : "Borrower workspace";
             ViewData["PageDate"] = ManilaClock.NowLocal.ToString("ddd d MMM yyyy");
         }
     }
