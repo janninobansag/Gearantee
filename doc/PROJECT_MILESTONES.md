@@ -383,3 +383,4 @@ The first version is complete when borrowers can securely reserve one available 
 | 10/9/2026 | Implemented equipment-item inventory listing, search and filters, registration, editing, and safe archive/restore; web app build passes | Bansag |
 | 10/9/2026 | Addressed PR #27 CI findings by registering the item service in the category test host, using encoded form values for equipment pagination, and removing user-supplied item codes from logs | Bansag |
 | 10/9/2026 | Addressed PR #27 review feedback with optional catalog-image persistence, serializable inventory lock checks, and equipment-item service/HTTP regression tests | Bansag |
+| 10/9/2026 | Addressed PR #27 concurrency and search findings with a shared SQL Server item lock, an opt-in inventory/reservation race regression test, and collation-aware search queries | Bansag |

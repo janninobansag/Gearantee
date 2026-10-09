@@ -64,16 +64,16 @@ namespace ASI.Basecode.Services.Services
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var term = search.ToLowerInvariant();
+                var term = search;
                 query = query.Where(item =>
-                    item.ItemCode.ToLower().Contains(term) ||
-                    item.ItemName.ToLower().Contains(term) ||
-                    (item.Brand != null && item.Brand.ToLower().Contains(term)) ||
-                    (item.Model != null && item.Model.ToLower().Contains(term)) ||
-                    (item.SerialNumber != null && item.SerialNumber.ToLower().Contains(term)) ||
-                    item.Location.ToLower().Contains(term) ||
-                    item.Category.CategoryName.ToLower().Contains(term) ||
-                    item.Category.CategoryCode.ToLower().Contains(term));
+                    item.ItemCode.Contains(term) ||
+                    item.ItemName.Contains(term) ||
+                    (item.Brand != null && item.Brand.Contains(term)) ||
+                    (item.Model != null && item.Model.Contains(term)) ||
+                    (item.SerialNumber != null && item.SerialNumber.Contains(term)) ||
+                    item.Location.Contains(term) ||
+                    item.Category.CategoryName.Contains(term) ||
+                    item.Category.CategoryCode.Contains(term));
             }
 
             if (categoryId.HasValue && categoryId.Value > 0)
@@ -290,17 +290,14 @@ namespace ASI.Basecode.Services.Services
                 return EquipmentItemOperationResult.Failure("Equipment details are required.");
             }
 
-            // Keep the reservation check and inventory write atomic. Under SQL Server's
-            // SERIALIZABLE isolation, the Reservation(EquipmentId, ...) index range is
-            // protected until commit, preventing a concurrent reservation insert from
-            // slipping between this check and the equipment update.
-            // Reservation creation/approval must also re-check availability and write
-            // its reservation within a SERIALIZABLE transaction.
+            // Inventory and reservation workflows must acquire the equipment row lock
+            // before checking reservations or changing state. Reservation creation and
+            // approval must use EquipmentItemConcurrencyLock in their own Serializable
+            // transaction before validating and writing the reservation.
             await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-            var item = await _db.EquipmentItems
-                .SingleOrDefaultAsync(equipment =>
-                    equipment.EquipmentId == model.EquipmentId && !equipment.IsArchived);
+            var item = await EquipmentItemConcurrencyLock.LoadForUpdateAsync(
+                _db, model.EquipmentId);
             if (item == null)
             {
                 return EquipmentItemOperationResult.NotFound();
@@ -386,13 +383,14 @@ namespace ASI.Basecode.Services.Services
             // Archive must use the same serializable lock/check/write boundary as Edit.
             await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-            var item = await _db.EquipmentItems
-                .Include(equipment => equipment.Category)
-                .SingleOrDefaultAsync(equipment => equipment.EquipmentId == equipmentId);
+            var item = await EquipmentItemConcurrencyLock.LoadForUpdateAsync(
+                _db, equipmentId, includeArchived: true);
             if (item == null)
             {
                 return EquipmentItemOperationResult.NotFound();
             }
+
+            await _db.Entry(item).Reference(equipment => equipment.Category).LoadAsync();
 
             if (item.IsArchived == isArchived)
             {
